@@ -12,3 +12,7 @@ node_modules/
 
 # Firebase
 firebase-debug.log
+
+# OS / Editor junk
+.DS_Store
+Thumbs.db
