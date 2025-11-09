@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "184273810737",
+    "project_id": "sportify-65c85",
+    "storage_bucket": "sportify-65c85.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:184273810737:android:342531ffd203b33ff8ec10",
+        "android_client_info": {
+          "package_name": "com.example.sportify_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA70HBCQRHBBakpx3et-UdWhB7rdEvbiQ0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
