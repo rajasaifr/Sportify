@@ -4,6 +4,8 @@ export const signup = async (req, res) => {
   try {
     const { email, password, name } = req.body;
 
+    console.log('📧 Signup attempt for:', email);
+
     // Validate input
     if (!email || !password || !name) {
       return res.status(400).json({ 
@@ -34,42 +36,110 @@ export const signup = async (req, res) => {
 
     console.log("✅ Input validation passed");
 
-    // 1. Create user in Firebase Auth
-    const userRecord = await admin.auth().createUser({
-      email,
-      password,
-      displayName: name,
-    });
-
-    console.log("✅ User created in Auth:", userRecord.uid);
+    let userRecord;
+    
+    try {
+      // 1. Create user in Firebase Auth
+      userRecord = await admin.auth().createUser({
+        email,
+        password,
+        displayName: name,
+      });
+      console.log("✅ User created in Auth:", userRecord.uid);
+      
+    } catch (authError) {
+      // Handle the case where user might already exist
+      if (authError.code === 'auth/email-already-exists' || authError.code === 'auth/email-already-in-use') {
+        console.log('⚠️ Email already exists in Firebase Auth');
+        
+        // Try to get the existing user
+        try {
+          userRecord = await admin.auth().getUserByEmail(email);
+          console.log('✅ Found existing user:', userRecord.uid);
+          
+          // Check if user profile exists in Firestore
+          const userDoc = await admin.firestore().collection('users').doc(userRecord.uid).get();
+          
+          if (userDoc.exists) {
+            return res.status(400).json({ 
+              error: "Email already registered. Please sign in instead." 
+            });
+          }
+          
+          // User exists in Auth but not in Firestore - continue to create profile
+          console.log('🔄 Creating Firestore profile for existing Auth user');
+          
+        } catch (getUserError) {
+          console.error('❌ Error getting existing user:', getUserError);
+          return res.status(400).json({ 
+            error: "Account may be processing. Please try again in a moment." 
+          });
+        }
+      } else {
+        // Re-throw other auth errors
+        throw authError;
+      }
+    }
 
     // 2. Create user profile in Firestore
-    await admin.firestore().collection('users').doc(userRecord.uid).set({
-      uid: userRecord.uid,
-      email: email,
-      displayName: name,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    try {
+      await admin.firestore().collection('users').doc(userRecord.uid).set({
+        uid: userRecord.uid,
+        email: email,
+        displayName: name,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
 
-    console.log("✅ User profile created in Firestore:", userRecord.uid);
+      console.log("✅ User profile created in Firestore:", userRecord.uid);
 
-    res.status(201).json({
-      message: "User created successfully",
-      uid: userRecord.uid,
-      email: userRecord.email,
-      name: userRecord.displayName,
-    });
+      res.status(201).json({
+        message: "User created successfully",
+        uid: userRecord.uid,
+        email: userRecord.email,
+        name: userRecord.displayName,
+      });
+
+    } catch (firestoreError) {
+      console.error("❌ Firestore error:", firestoreError);
+      
+      // Even if Firestore fails, the Auth user was created
+      res.status(201).json({
+        message: "User authentication created, but profile setup incomplete",
+        uid: userRecord.uid,
+        email: userRecord.email,
+        warning: "Please complete your profile later"
+      });
+    }
+
   } catch (err) {
     console.error("❌ Signup error:", err);
     
     // Handle specific Firebase errors
-    if (err.code === 'auth/email-already-exists') {
-      return res.status(400).json({ error: "Email already exists" });
+    if (err.code === 'auth/email-already-exists' || err.code === 'auth/email-already-in-use') {
+      return res.status(400).json({ 
+        error: "This email is already registered. Please sign in instead." 
+      });
     } else if (err.code === 'auth/invalid-email') {
-      return res.status(400).json({ error: "Invalid email address" });
+      return res.status(400).json({ 
+        error: "Invalid email address format" 
+      });
     } else if (err.code === 'auth/invalid-password') {
-      return res.status(400).json({ error: "Password must be at least 6 characters" });
+      return res.status(400).json({ 
+        error: "Password must be at least 6 characters long" 
+      });
+    } else if (err.code === 'auth/operation-not-allowed') {
+      return res.status(400).json({ 
+        error: "Email/password accounts are not enabled. Check Firebase Auth settings." 
+      });
+    } else if (err.code === 'auth/too-many-requests') {
+      return res.status(400).json({ 
+        error: "Too many attempts. Please try again later." 
+      });
+    } else if (err.code === 'auth/weak-password') {
+      return res.status(400).json({ 
+        error: "Password is too weak. Please choose a stronger password." 
+      });
     }
     
     res.status(400).json({ 
@@ -80,45 +150,27 @@ export const signup = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { idToken } = req.body; // CHANGED: Expect ID token from Flutter
 
     // Validate input
-    if (!email || !password) {
+    if (!idToken) {
       return res.status(400).json({ 
-        error: "Email and password are required" 
+        error: "ID token is required. Please sign in with Firebase Auth first." 
       });
     }
 
-    // Validate email format
-    if (!email.includes('@')) {
-      return res.status(400).json({ 
-        error: "Please enter a valid email address" 
-      });
-    }
+    console.log("🔐 Login verification for token");
 
-    console.log("✅ Login validation passed for:", email);
-
-    // For backend login with Firebase Admin, we need to:
-    // 1. Verify the user exists and get their UID
-    // 2. Create a custom token for client-side authentication
+    // Verify the ID token from Flutter Firebase Auth
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
     
-    // Get user by email
-    const userRecord = await admin.auth().getUserByEmail(email);
-    
-    if (!userRecord) {
-      return res.status(400).json({ 
-        error: "Invalid email or password" 
-      });
-    }
+    console.log("✅ Token verified for user:", decodedToken.uid);
 
-    console.log("✅ User found:", userRecord.uid);
+    // Get additional user data
+    const userRecord = await admin.auth().getUser(decodedToken.uid);
 
-    // Note: Firebase Admin cannot verify passwords directly
-    // The actual password verification happens client-side with Firebase Auth
-    // Here we just verify the user exists and return a success message
-    
     res.status(200).json({
-      message: "Login successful - use Firebase Auth SDK in Flutter for actual authentication",
+      message: "Login successful",
       user: {
         uid: userRecord.uid,
         email: userRecord.email,
@@ -130,14 +182,75 @@ export const login = async (req, res) => {
     console.error("❌ Login error:", err);
     
     // Handle specific Firebase errors
-    if (err.code === 'auth/user-not-found') {
-      return res.status(400).json({ error: "Invalid email or password" });
-    } else if (err.code === 'auth/invalid-email') {
-      return res.status(400).json({ error: "Invalid email address" });
+    if (err.code === 'auth/id-token-expired') {
+      return res.status(401).json({ 
+        error: "Session expired. Please sign in again." 
+      });
+    } else if (err.code === 'auth/id-token-revoked') {
+      return res.status(401).json({ 
+        error: "Session revoked. Please sign in again." 
+      });
+    } else if (err.code === 'auth/invalid-id-token') {
+      return res.status(401).json({ 
+        error: "Invalid session. Please sign in again." 
+      });
+    } else if (err.code === 'auth/user-not-found') {
+      return res.status(400).json({ 
+        error: "User not found. Please sign up first." 
+      });
     }
     
-    res.status(400).json({ 
-      error: err.message || "Failed to login" 
+    res.status(401).json({ 
+      error: "Authentication failed. Please try again." 
+    });
+  }
+};
+
+// Add this new endpoint to check user status
+export const checkUser = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ 
+        error: "Email is required" 
+      });
+    }
+
+    console.log('🔍 Checking user status for:', email);
+
+    try {
+      // Check if user exists in Firebase Auth
+      const userRecord = await admin.auth().getUserByEmail(email);
+      console.log('✅ User found in Auth:', userRecord.uid);
+
+      // Check if user exists in Firestore
+      const userDoc = await admin.firestore().collection('users').doc(userRecord.uid).get();
+      
+      res.status(200).json({
+        existsInAuth: true,
+        existsInFirestore: userDoc.exists,
+        uid: userRecord.uid,
+        email: userRecord.email,
+        displayName: userRecord.displayName,
+      });
+
+    } catch (error) {
+      if (error.code === 'auth/user-not-found') {
+        res.status(200).json({
+          existsInAuth: false,
+          existsInFirestore: false,
+          message: "User not found"
+        });
+      } else {
+        throw error;
+      }
+    }
+
+  } catch (err) {
+    console.error('❌ Check user error:', err);
+    res.status(500).json({ 
+      error: "Failed to check user status" 
     });
   }
 };
