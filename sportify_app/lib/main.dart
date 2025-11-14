@@ -1,18 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart'; // <-- ADD THIS
+import 'package:sportify_app/services/auth_service.dart'; // <-- ADD THIS
+import 'package:sportify_app/services/firestore_service.dart'; // <-- ADD THIS
+import 'package:sportify_app/screens/auth_wrapper.dart';
 import 'firebase_options.dart';
-import 'services/auth_service.dart';
-
-// Remove the const from LoginScreen since we're creating it dynamically
-import 'screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+
+  runApp(
+    // --- THIS IS THE NEW WIDGET ---
+    // It provides our services to the entire app
+    MultiProvider(
+      providers: [
+        // Provides the one, single instance of AuthService
+        Provider<AuthService>(
+          create: (_) => AuthService(),
+        ),
+        // We'll also provide FirestoreService at the same time
+        Provider<FirestoreService>(
+          create: (_) => FirestoreService(),
+        ),
+      ],
+      child: const MyApp(), // Your original app
+    ),
+    // --- END OF NEW WIDGET ---
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -20,21 +37,19 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        Provider<AuthService>(
-          create: (_) => AuthService(),
+    return MaterialApp(
+      title: 'Sportify',
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        primarySwatch: Colors.blue,
+        // A dark theme for a media app
+        scaffoldBackgroundColor: const Color(0xFF121212),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF1F1F1F),
         ),
-      ],
-      child: MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'Sportify',
-        theme: ThemeData(
-          primarySwatch: Colors.blue,
-          useMaterial3: true,
-        ),
-        home: const LoginScreen(), // Remove const if still having issues
       ),
+      debugShowCheckedModeBanner: false,
+      home: const AuthWrapper(),
     );
   }
 }
