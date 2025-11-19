@@ -1,39 +1,47 @@
+// screens/home_screen.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // <-- ADD THIS
+import 'package:provider/provider.dart';
 import 'package:sportify_app/models/room_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/screens/create_room_screen.dart';
 import 'package:sportify_app/screens/room_screen.dart';
+import 'package:sportify_app/screens/profile_screen.dart'; // Add this
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // --- THIS IS THE FIX ---
-    // Get the *shared* instances from Provider
     final authService = Provider.of<AuthService>(context);
     final firestoreService = Provider.of<FirestoreService>(context);
-    // --- END OF FIX ---
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Sportify Lobby'),
         actions: [
+          // Add Profile Button
+          IconButton(
+            icon: const Icon(Icons.person),
+            tooltip: 'Profile',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const ProfileScreen(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Sign Out',
             onPressed: () {
-              // This now calls the *shared* instance,
-              // so the AuthWrapper will hear it!
               authService.signOut();
             },
           ),
         ],
       ),
       body: StreamBuilder<List<Room>>(
-        // Use the shared instance
         stream: firestoreService.getPublicRoomsStream(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {

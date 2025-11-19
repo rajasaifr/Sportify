@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:provider/provider.dart'; // <-- ADD THIS
-import 'package:sportify_app/services/auth_service.dart'; // <-- ADD THIS
-import 'package:sportify_app/services/firestore_service.dart'; // <-- ADD THIS
+import 'package:provider/provider.dart';
+import 'package:sportify_app/services/auth_service.dart';
+import 'package:sportify_app/services/firestore_service.dart';
+import 'package:sportify_app/services/profile_service.dart'; // Added
 import 'package:sportify_app/screens/auth_wrapper.dart';
 import 'firebase_options.dart';
 
@@ -13,8 +14,6 @@ void main() async {
   );
 
   runApp(
-    // --- THIS IS THE NEW WIDGET ---
-    // It provides our services to the entire app
     MultiProvider(
       providers: [
         // Provides the one, single instance of AuthService
@@ -25,10 +24,13 @@ void main() async {
         Provider<FirestoreService>(
           create: (_) => FirestoreService(),
         ),
+        // Add ProfileService to the providers
+        Provider<ProfileService>(
+          create: (_) => ProfileService(),
+        ),
       ],
-      child: const MyApp(), // Your original app
+      child: const MyApp(),
     ),
-    // --- END OF NEW WIDGET ---
   );
 }
 

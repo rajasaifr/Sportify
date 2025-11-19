@@ -40,54 +40,51 @@ class AuthService {
 
   /// Sign Up with Email & Password (UC-01 from your docs)
   /// This creates the user in Auth AND saves their data to Firestore.
-  Future<User?> signUpWithEmail({
-    required String email,
-    required String password,
-    required String displayName,
-  }) async {
-    try {
-      // 1. Create user in Firebase Auth
-      UserCredential userCredential =
-          await _auth.createUserWithEmailAndPassword(
-        email: email,
-        password: password,
+Future<User?> signUpWithEmail({
+  required String email,
+  required String password,
+  required String displayName,
+}) async {
+  try {
+    // 1. Create user in Firebase Auth
+    UserCredential userCredential =
+        await _auth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
+
+    User? firebaseUser = userCredential.user;
+
+    if (firebaseUser != null) {
+      // 2. Create our UserModel
+      UserModel newUser = UserModel(
+        uid: firebaseUser.uid,
+        email: firebaseUser.email!,
+        displayName: displayName,
+        createdAt: DateTime.now(),
+        role: UserRole.user,
       );
 
-      User? firebaseUser = userCredential.user;
+      // 3. Save the UserModel to Firestore
+      await _firestore
+          .collection('users')
+          .doc(firebaseUser.uid)
+          .set(newUser.toJson());
 
-      if (firebaseUser != null) {
-        // 2. Create our UserModel
-        UserModel newUser = UserModel(
-          uid: firebaseUser.uid,
-          email: firebaseUser.email!,
-          displayName: displayName,
-          createdAt: DateTime.now(),
-          role: UserRole.user, // Default role
-        );
+      // REMOVE THIS LINE - Don't sign out after sign up!
+      // await _auth.signOut();
 
-        // 3. Save the UserModel to Firestore
-        await _firestore
-            .collection('users')
-            .doc(firebaseUser.uid)
-            .set(newUser.toJson());
-
-        // --- THIS IS THE FIX ---
-        // 4. Sign out the user to force them to log in
-        await _auth.signOut();
-        // --- END OF FIX ---
-
-        return firebaseUser;
-      }
-      return null;
-    } on FirebaseAuthException catch (e) {
-      print("FirebaseAuthException: $e"); // Use logger
-      // Handle errors (e.g., email-already-in-use)
-      return null;
-    } catch (e) {
-      print("Error signing up: $e"); // Use logger
-      return null;
+      return firebaseUser;
     }
+    return null;
+  } on FirebaseAuthException catch (e) {
+    print("FirebaseAuthException: $e");
+    return null;
+  } catch (e) {
+    print("Error signing up: $e");
+    return null;
   }
+}
 
   /// Sign In with Email & Password (UC-02)
   Future<User?> signInWithEmail({
@@ -163,7 +160,16 @@ class AuthService {
 
   /// Sign Out
   Future<void> signOut() async {
-    await _googleSignIn.signOut();
+  try {
+    // Only use Google Sign Out on supported platforms
+    if (await _googleSignIn.isSignedIn()) {
+      await _googleSignIn.signOut();
+    }
+    await _auth.signOut();
+  } catch (e) {
+    print("Error signing out: $e");
+    // Still try to sign out from Firebase even if Google fails
     await _auth.signOut();
   }
+}
 }

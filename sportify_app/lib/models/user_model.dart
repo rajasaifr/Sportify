@@ -6,6 +6,9 @@ class UserModel {
   final String? displayName;
   final DateTime? createdAt;
   final UserRole role;
+  final String? bio;
+  final String? profilePicUrl;
+  final List<String>? favoriteTeams;
 
   UserModel({
     required this.uid,
@@ -13,6 +16,9 @@ class UserModel {
     this.displayName,
     this.createdAt,
     this.role = UserRole.user,
+    this.bio,
+    this.profilePicUrl,
+    this.favoriteTeams,
   });
 
   Map<String, dynamic> toJson() {
@@ -22,6 +28,9 @@ class UserModel {
       'displayName': displayName,
       'createdAt': createdAt?.toIso8601String(),
       'role': role.name,
+      'bio': bio,
+      'profilePicUrl': profilePicUrl,
+      'favoriteTeams': favoriteTeams ?? [],
     };
   }
 
@@ -33,11 +42,15 @@ class UserModel {
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'])
           : null,
-
       role: UserRole.values.firstWhere(
         (e) => e.name == json['role'],
         orElse: () => UserRole.user,
       ),
+      bio: json['bio'],
+      profilePicUrl: json['profilePicUrl'],
+      favoriteTeams: json['favoriteTeams'] != null
+          ? List<String>.from(json['favoriteTeams'])
+          : [],
     );
   }
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // <-- ADD THIS
+import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sportify_app/models/user_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/screens/home_screen.dart';
@@ -10,14 +12,12 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // --- THIS IS THE FIX ---
-    // Get the *shared* instance of AuthService from Provider
     final authService = Provider.of<AuthService>(context);
-    // --- END OF FIX ---
 
-    return StreamBuilder<UserModel?>(
-      // Listen to the stream from that one shared instance
-      stream: authService.authStateChanges,
+    return StreamBuilder<User?>(
+      // Use authService's auth stream, not _auth directly
+      stream: authService.authStateChanges.asyncMap((userModel) => 
+          userModel != null ? FirebaseAuth.instance.currentUser : null),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -27,12 +27,53 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
-        if (snapshot.hasData) {
+        final user = snapshot.data;
+        
+        if (user != null) {
+          // User is authenticated in Firebase Auth
+          // Ensure they have a Firestore document
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _ensureUserDocument(context, user);
+          });
+          
           return const HomeScreen();
         } else {
+          // No user authenticated
           return const LoginScreen();
         }
       },
     );
+  }
+
+  void _ensureUserDocument(BuildContext context, User firebaseUser) async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(firebaseUser.uid)
+          .get();
+      
+      if (!userDoc.exists) {
+        print("📝 Creating missing user document for: ${firebaseUser.uid}");
+        
+        UserModel newUser = UserModel(
+          uid: firebaseUser.uid,
+          email: firebaseUser.email!,
+          displayName: firebaseUser.displayName ?? 'User',
+          createdAt: DateTime.now(),
+          role: UserRole.user,
+          bio: '',
+          favoriteTeams: [],
+        );
+        
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(firebaseUser.uid)
+            .set(newUser.toJson());
+            
+        print("✅ User document created successfully!");
+      }
+    } catch (e) {
+      print("❌ Error ensuring user document: $e");
+    }
   }
 }
