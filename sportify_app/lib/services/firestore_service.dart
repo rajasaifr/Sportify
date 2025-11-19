@@ -163,5 +163,162 @@ class FirestoreService {
   }
   
   
+Stream<List<Friendship>> getFriendshipsForUser(String userId) {
+  return _firestore
+      .collection('friendships')
+      .where('status', isEqualTo: FriendshipStatus.accepted.name)
+      .snapshots()
+      .map((snapshot) {
+    // Filter in code - where user is either user1 OR user2
+    return snapshot.docs
+        .map((doc) => Friendship.fromJson(doc.data() as Map<String, dynamic>))
+        .where((friendship) =>
+            friendship.user1Id == userId || friendship.user2Id == userId)
+        .toList();
+  });
+}
+
+// Add this to your FirestoreService class
+Future<List<UserModel>> searchUsers(String searchQuery) async {
+  try {
+    print("🔍 [SEARCH] Starting search for: '$searchQuery'");
+    
+    if (searchQuery.isEmpty) {
+      print("🔍 [SEARCH] Empty query, returning empty list");
+      return [];
+    }
+
+    // Get ALL users and filter in Dart (case-insensitive)
+    final snapshot = await _firestore.collection('users').get();
+    print("🔍 [SEARCH] Found ${snapshot.docs.length} total users in database");
+    
+    final results = snapshot.docs
+        .map((doc) {
+          print("🔍 [SEARCH] Processing user: ${doc.data()['displayName']}");
+          return UserModel.fromJson(doc.data() as Map<String, dynamic>);
+        })
+        .where((user) {
+          final displayName = user.displayName?.toLowerCase() ?? '';
+          final email = user.email.toLowerCase();
+          final query = searchQuery.toLowerCase();
+          
+          final matches = displayName.contains(query) || email.contains(query);
+          if (matches) {
+            print("🔍 [SEARCH] MATCH: ${user.displayName} contains '$searchQuery'");
+          }
+          return matches;
+        })
+        .toList();
+    
+    print("🔍 [SEARCH] Search completed. Found ${results.length} matches");
+    return results;
+  } catch (e) {
+    print("❌ [SEARCH] Error searching users: $e");
+    return [];
+  }
+}
+
+
+// Accept friend request
+Future<void> acceptFriendRequest(String friendshipId) async {
+  try {
+    await _firestore.collection('friendships').doc(friendshipId).update({
+      'status': FriendshipStatus.accepted.name,
+    });
+  } catch (e) {
+    print("Error accepting friend request: $e");
+    throw Exception('Failed to accept friend request');
+  }
+}
+
+// Decline friend request  
+Future<void> declineFriendRequest(String friendshipId) async {
+  try {
+    await _firestore.collection('friendships').doc(friendshipId).delete();
+  } catch (e) {
+    print("Error declining friend request: $e");
+    throw Exception('Failed to decline friend request');
+  }
+}
+
+// Get pending requests (received)
+Stream<List<Friendship>> getPendingRequestsReceived(String userId) {
+  return _firestore
+      .collection('friendships')
+      .where('user2Id', isEqualTo: userId)
+      .where('status', isEqualTo: FriendshipStatus.pending.name)
+      .snapshots()
+      .map((snapshot) {
+    return snapshot.docs
+        .map((doc) => Friendship.fromJson(doc.data() as Map<String, dynamic>))
+        .toList();
+  });
+}
+
+Future<UserModel?> getUserById(String userId) async {
+  try {
+    final doc = await _firestore.collection('users').doc(userId).get();
+    if (doc.exists) {
+      return UserModel.fromJson(doc.data() as Map<String, dynamic>);
+    }
+    return null;
+  } catch (e) {
+    print("Error getting user by ID: $e");
+    return null;
+  }
+}
+
+// Check if any friendship exists between two users (any status)
+Future<Friendship?> getFriendshipBetweenUsers(String user1Id, String user2Id) async {
+  try {
+    // Check combination 1: user1Id -> user2Id
+    final snapshot1 = await _firestore
+        .collection('friendships')
+        .where('user1Id', isEqualTo: user1Id)
+        .where('user2Id', isEqualTo: user2Id)
+        .limit(1)
+        .get();
+
+    if (snapshot1.docs.isNotEmpty) {
+      return Friendship.fromJson(snapshot1.docs.first.data());
+    }
+
+    // Check combination 2: user2Id -> user1Id  
+    final snapshot2 = await _firestore
+        .collection('friendships')
+        .where('user1Id', isEqualTo: user2Id)
+        .where('user2Id', isEqualTo: user1Id)
+        .limit(1)
+        .get();
+
+    if (snapshot2.docs.isNotEmpty) {
+      return Friendship.fromJson(snapshot2.docs.first.data());
+    }
+
+    return null;
+  } catch (e) {
+    print("Error checking friendship: $e");
+    return null;
+  }
+}
+
+// Get friendship status for UI (for search results)
+Future<FriendshipStatus?> getFriendshipStatus(String currentUserId, String otherUserId) async {
+  try {
+    final friendship = await getFriendshipBetweenUsers(currentUserId, otherUserId);
+    return friendship?.status;
+  } catch (e) {
+    print("Error getting friendship status: $e");
+    return null;
+  }
+}
+Future<void> deleteFriendship(String friendshipId) async {
+  try {
+    await _firestore.collection('friendships').doc(friendshipId).delete();
+  } catch (e) {
+    print("Error deleting friendship: $e");
+    throw Exception('Failed to delete friendship');
+  }
+}
 
 }

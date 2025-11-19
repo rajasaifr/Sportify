@@ -7,6 +7,7 @@ import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/screens/create_room_screen.dart';
 import 'package:sportify_app/screens/room_screen.dart';
 import 'package:sportify_app/screens/profile_screen.dart'; // Add this
+import 'package:sportify_app/screens/friends_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -39,6 +40,15 @@ class HomeScreen extends StatelessWidget {
               authService.signOut();
             },
           ),
+         IconButton(
+            icon: const Icon(Icons.people),
+            tooltip: 'Friends',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const FriendsScreen()),
+              );
+            },
+            ),
         ],
       ),
       body: StreamBuilder<List<Room>>(
