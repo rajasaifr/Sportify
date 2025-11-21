@@ -6,6 +6,10 @@ import 'package:provider/provider.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/services/profile_service.dart';
+// Interfaces - Dependency Inversion Principle (DIP)
+import 'package:sportify_app/services/interfaces/auth_service_interface.dart';
+import 'package:sportify_app/services/interfaces/firestore_service_interface.dart';
+import 'package:sportify_app/services/interfaces/profile_service_interface.dart';
 
 // Screens
 import 'package:sportify_app/screens/auth_wrapper.dart';
@@ -20,9 +24,38 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        Provider<AuthService>(create: (_) => AuthService()),
-        Provider<FirestoreService>(create: (_) => FirestoreService()),
-        Provider<ProfileService>(create: (_) => ProfileService()),
+        // Dependency Inversion Principle (DIP) - depend on interfaces, not concrete classes
+        // Services are provided as interfaces but implemented by concrete classes
+        Provider<IAuthService>(
+          create: (_) {
+            try {
+              return AuthService();
+            } catch (e) {
+              // If AuthService creation fails, still create it
+              // The lazy initialization will handle Google Sign-In errors
+              print("Warning: AuthService creation had issues: $e");
+              return AuthService();
+            }
+          },
+        ),
+        // Provide concrete implementation for backward compatibility
+        Provider<AuthService>(
+          create: (_) => AuthService(),
+        ),
+        Provider<IFirestoreService>(
+          create: (_) => FirestoreService(),
+        ),
+        // Provide concrete implementation for backward compatibility
+        Provider<FirestoreService>(
+          create: (_) => FirestoreService(),
+        ),
+        Provider<IProfileService>(
+          create: (_) => ProfileService(),
+        ),
+        // Provide concrete implementation for backward compatibility
+        Provider<ProfileService>(
+          create: (_) => ProfileService(),
+        ),
       ],
       child: const MyApp(),
     ),
