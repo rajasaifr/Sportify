@@ -29,38 +29,40 @@ class _FriendsScreenState extends State<FriendsScreen> {
     );
   }
 
-Widget _buildSearchBar() {
-  return Padding(
-    padding: const EdgeInsets.all(16.0),
-    child: Row(
-      children: [
-        Expanded(
-          child: Text(
-            'Friends',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Friends',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
           ),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).primaryColor,
-            shape: BoxShape.circle,
+          Container(
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor,
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                      builder: (context) => const AddFriendScreen()),
+                );
+              },
+              icon: const Icon(Icons.person_add, color: Colors.white),
+              tooltip: 'Find Friends',
+            ),
           ),
-          child: IconButton(
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const AddFriendScreen()),
-              );
-            },
-            icon: const Icon(Icons.person_add, color: Colors.white),
-            tooltip: 'Find Friends',
-          ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
+
   Widget _buildTabsSection() {
     return Expanded(
       child: DefaultTabController(
@@ -90,7 +92,7 @@ Widget _buildSearchBar() {
   Widget _buildFriendsList() {
     final authService = Provider.of<AuthService>(context);
     final currentUser = authService.currentUser;
-    
+
     if (currentUser == null) {
       return const Center(child: Text('Please log in'));
     }
@@ -102,13 +104,13 @@ Widget _buildSearchBar() {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        
+
         if (snapshot.hasError) {
           return Center(child: Text('Error loading friends'));
         }
-        
+
         final friendships = snapshot.data ?? [];
-        
+
         if (friendships.isEmpty) {
           return const Center(
             child: Column(
@@ -130,7 +132,7 @@ Widget _buildSearchBar() {
             ),
           );
         }
-        
+
         return ListView.builder(
           itemCount: friendships.length,
           itemBuilder: (context, index) {
@@ -144,7 +146,7 @@ Widget _buildSearchBar() {
                     title: Text('Loading...'),
                   );
                 }
-                
+
                 final friendUser = userSnapshot.data;
                 return ListTile(
                   leading: CircleAvatar(
@@ -165,7 +167,7 @@ Widget _buildSearchBar() {
   Widget _buildRequestsList() {
     final authService = Provider.of<AuthService>(context);
     final currentUser = authService.currentUser;
-    
+
     if (currentUser == null) {
       return const Center(child: Text('Please log in'));
     }
@@ -177,19 +179,20 @@ Widget _buildSearchBar() {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        
+
         if (snapshot.hasError) {
           return Center(child: Text('Error loading requests'));
         }
-        
+
         final requests = snapshot.data ?? [];
-        
+
         if (requests.isEmpty) {
           return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.mark_email_unread_outlined, size: 64, color: Colors.grey),
+                Icon(Icons.mark_email_unread_outlined,
+                    size: 64, color: Colors.grey),
                 SizedBox(height: 16),
                 Text(
                   'No pending requests',
@@ -199,7 +202,7 @@ Widget _buildSearchBar() {
             ),
           );
         }
-        
+
         return ListView.builder(
           itemCount: requests.length,
           itemBuilder: (context, index) {
@@ -221,11 +224,13 @@ Widget _buildSearchBar() {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.check, color: Colors.green),
-                        onPressed: () => _acceptFriendRequest(request.friendshipId),
+                        onPressed: () =>
+                            _acceptFriendRequest(request.friendshipId),
                       ),
                       IconButton(
                         icon: const Icon(Icons.close, color: Colors.red),
-                        onPressed: () => _declineFriendRequest(request.friendshipId),
+                        onPressed: () =>
+                            _declineFriendRequest(request.friendshipId),
                       ),
                     ],
                   ),
@@ -238,11 +243,12 @@ Widget _buildSearchBar() {
     );
   }
 
-  Future<UserModel?> _getFriendUserModel(Friendship friendship, String currentUserId) async {
-    final friendId = friendship.user1Id == currentUserId 
-        ? friendship.user2Id 
+  Future<UserModel?> _getFriendUserModel(
+      Friendship friendship, String currentUserId) async {
+    final friendId = friendship.user1Id == currentUserId
+        ? friendship.user2Id
         : friendship.user1Id;
-    
+
     return Provider.of<FirestoreService>(context, listen: false)
         .getUserById(friendId);
   }
@@ -251,7 +257,7 @@ Widget _buildSearchBar() {
     try {
       await Provider.of<FirestoreService>(context, listen: false)
           .acceptFriendRequest(friendshipId);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Friend request accepted!')),
       );
@@ -266,7 +272,7 @@ Widget _buildSearchBar() {
     try {
       await Provider.of<FirestoreService>(context, listen: false)
           .declineFriendRequest(friendshipId);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Friend request declined')),
       );

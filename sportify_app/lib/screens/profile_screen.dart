@@ -1,8 +1,9 @@
-// screens/profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sportify_app/models/user_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
+import 'package:sportify_app/services/firestore_service.dart';
+// Make sure to point this to the correct location or use FirestoreService if you merged them
 import 'package:sportify_app/services/profile_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -27,30 +28,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadCurrentUser();
   }
 
- void _loadCurrentUser() async {
-  final authService = Provider.of<AuthService>(context, listen: false);
-  final profileService = Provider.of<ProfileService>(context, listen: false);
-  
-  try {
-    final user = authService.currentUser;
-    if (user != null && user.uid.isNotEmpty) {
-      final userProfile = await profileService.getUserProfile(user.uid);
-      if (userProfile != null && mounted) {
-        setState(() {
-          _displayNameController.text = userProfile.displayName ?? '';
-          _bioController.text = userProfile.bio ?? '';
-          _selectedTeams = userProfile.favoriteTeams ?? [];
-        });
+  void _loadCurrentUser() async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    // Note: If you moved getUserProfile to FirestoreService, update this line:
+    final profileService = Provider.of<ProfileService>(context, listen: false);
+
+    try {
+      final user = authService.currentUser;
+      if (user != null && user.uid.isNotEmpty) {
+        final userProfile = await profileService.getUserProfile(user.uid);
+        if (userProfile != null && mounted) {
+          setState(() {
+            _displayNameController.text = userProfile.displayName ?? '';
+            _bioController.text = userProfile.bio ?? '';
+            _selectedTeams = userProfile.favoriteTeams ?? [];
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading profile: $e')),
+        );
       }
     }
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading profile: $e')),
-      );
-    }
   }
-}
+
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -58,8 +61,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      final profileService = Provider.of<ProfileService>(context, listen: false);
-      
+      final profileService =
+          Provider.of<ProfileService>(context, listen: false);
+
       final currentUser = authService.currentUser;
       if (currentUser == null) return;
 
@@ -79,7 +83,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile updated successfully!')),
         );
-        Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
@@ -92,6 +95,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  // Added Sign Out Function
+  void _signOut() {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    authService.signOut();
+    // The AuthWrapper in main.dart will automatically take them to Login
   }
 
   void _onTeamsUpdated(List<String> teams) {
@@ -109,28 +119,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Edit Profile'),
-        actions: [
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            )
-          else
-            IconButton(
-              icon: const Icon(Icons.save),
-              onPressed: _saveProfile,
-              tooltip: 'Save Changes',
-            ),
-        ],
-      ),
-      body: Padding(
+    // We removed the Scaffold and AppBar so it fits nicely in the Tabs
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
@@ -143,6 +135,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildPreferencesSection(),
               const SizedBox(height: 32),
               _buildActionButtons(),
+
+              // --- NEW SIGNOUT BUTTON ---
+              const SizedBox(height: 40),
+              const Divider(),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade900,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: _signOut,
+                  icon: const Icon(Icons.logout),
+                  label: const Text('Sign Out'),
+                ),
+              ),
+              const SizedBox(height: 40), // Extra space at bottom
             ],
           ),
         ),
@@ -177,8 +188,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Text(
           'Basic Information',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 16),
         TextFormField(
@@ -225,15 +236,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Text(
           'Sports Preferences',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+                fontWeight: FontWeight.bold,
+              ),
         ),
         const SizedBox(height: 8),
         Text(
           'Select your favorite teams',
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Colors.grey[400],
-          ),
+                color: Colors.grey[400],
+              ),
         ),
         const SizedBox(height: 16),
         _buildTeamSelection(),
@@ -256,47 +267,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ];
 
     return Wrap(
-    spacing: 8,
-    runSpacing: 8,
-    children: availableTeams.map((team) {
-      final isSelected = _selectedTeams.contains(team);
-      return FilterChip(
-        label: Text(team),
-        selected: isSelected,
-        onSelected: (_) {
-          setState(() {
-            if (isSelected) {
-              _selectedTeams.remove(team);
-            } else {
-              _selectedTeams.add(team);
-            }
-          });
-          _onTeamsUpdated(_selectedTeams); // Add this line
-        },
-        checkmarkColor: Colors.white,
-        selectedColor: Theme.of(context).primaryColor,
-      );
-    }).toList(),
-  );
-}
+      spacing: 8,
+      runSpacing: 8,
+      children: availableTeams.map((team) {
+        final isSelected = _selectedTeams.contains(team);
+        return FilterChip(
+          label: Text(team),
+          selected: isSelected,
+          onSelected: (_) {
+            setState(() {
+              if (isSelected) {
+                _selectedTeams.remove(team);
+              } else {
+                _selectedTeams.add(team);
+              }
+            });
+            _onTeamsUpdated(_selectedTeams);
+          },
+          checkmarkColor: Colors.white,
+          selectedColor: Theme.of(context).primaryColor,
+        );
+      }).toList(),
+    );
+  }
+
   Widget _buildActionButtons() {
     return Row(
       children: [
         Expanded(
-          child: OutlinedButton(
-            onPressed: _isLoading ? null : () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
           child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
             onPressed: _isLoading ? null : _saveProfile,
             child: _isLoading
                 ? const SizedBox(
                     width: 16,
                     height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
                   )
                 : const Text('Save Changes'),
           ),
