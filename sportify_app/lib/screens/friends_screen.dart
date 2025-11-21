@@ -14,11 +14,24 @@ class FriendsScreen extends StatefulWidget {
 }
 
 class _FriendsScreenState extends State<FriendsScreen> {
+  // Color scheme matching login page
+  static const Color purpleButton = Color(0xFF6C5CE7);
+  static const Color containerGradient1 = Color(0xFF1a1a2e);
+  static const Color containerGradient2 = Color(0xFF16213e);
+  static const Color containerGradient3 = Color(0xFF0f3460);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF1a1a2e), // Match container gradient start color
       appBar: AppBar(
-        title: const Text('Friends'),
+        backgroundColor: const Color(0xFF1a1a2e),
+        elevation: 0,
+        title: const Text(
+          'Friends',
+          style: TextStyle(color: Colors.white),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: Column(
         children: [
@@ -30,21 +43,23 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
+    return Container(
+      padding: const EdgeInsets.all(20.0),
       child: Row(
         children: [
-          Expanded(
+          const Expanded(
             child: Text(
               'Friends',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           ),
           Container(
             decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor,
+              color: purpleButton,
               shape: BoxShape.circle,
             ),
             child: IconButton(
@@ -69,18 +84,27 @@ class _FriendsScreenState extends State<FriendsScreen> {
         length: 2,
         child: Column(
           children: [
-            const TabBar(
-              tabs: [
-                Tab(text: 'My Friends'),
-                Tab(text: 'Requests'),
-              ],
+            Container(
+              color: const Color(0xFF1a1a2e),
+              child: const TabBar(
+                indicatorColor: Colors.redAccent,
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.grey,
+                tabs: [
+                  Tab(text: 'My Friends'),
+                  Tab(text: 'Requests'),
+                ],
+              ),
             ),
             Expanded(
-              child: TabBarView(
-                children: [
-                  _buildFriendsList(),
-                  _buildRequestsList(),
-                ],
+              child: Container(
+                color: const Color(0xFF1a1a2e),
+                child: TabBarView(
+                  children: [
+                    _buildFriendsList(),
+                    _buildRequestsList(),
+                  ],
+                ),
               ),
             ),
           ],
@@ -102,30 +126,37 @@ class _FriendsScreenState extends State<FriendsScreen> {
           .getFriendshipsForUser(currentUser.uid),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+            child: CircularProgressIndicator(color: Colors.redAccent),
+          );
         }
 
         if (snapshot.hasError) {
-          return Center(child: Text('Error loading friends'));
+          return Center(
+            child: Text(
+              'Error loading friends',
+              style: const TextStyle(color: Colors.white),
+            ),
+          );
         }
 
         final friendships = snapshot.data ?? [];
 
         if (friendships.isEmpty) {
-          return const Center(
+          return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.people_outline, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
+                Icon(Icons.people_outline, size: 64, color: Colors.white.withOpacity(0.5)),
+                const SizedBox(height: 16),
                 Text(
                   'No friends yet',
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                  style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.7)),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text(
                   'Search for users and send friend requests!',
-                  style: TextStyle(color: Colors.grey),
+                  style: TextStyle(color: Colors.white.withOpacity(0.5)),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -148,13 +179,41 @@ class _FriendsScreenState extends State<FriendsScreen> {
                 }
 
                 final friendUser = userSnapshot.data;
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.grey[800],
-                    child: const Icon(Icons.person, color: Colors.grey),
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        containerGradient1,
+                        containerGradient2,
+                        containerGradient3,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.1),
+                      width: 1,
+                    ),
                   ),
-                  title: Text(friendUser?.displayName ?? 'Unknown User'),
-                  subtitle: Text(friendUser?.email ?? ''),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.redAccent,
+                      child: Text(
+                        (friendUser?.displayName ?? 'U')[0].toUpperCase(),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
+                    title: Text(
+                      friendUser?.displayName ?? 'Unknown User',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    subtitle: Text(
+                      friendUser?.email ?? '',
+                      style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                    ),
+                  ),
                 );
               },
             );
@@ -177,26 +236,33 @@ class _FriendsScreenState extends State<FriendsScreen> {
           .getPendingRequestsReceived(currentUser.uid),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(
+            child: CircularProgressIndicator(color: Colors.redAccent),
+          );
         }
 
         if (snapshot.hasError) {
-          return Center(child: Text('Error loading requests'));
+          return Center(
+            child: Text(
+              'Error loading requests',
+              style: const TextStyle(color: Colors.white),
+            ),
+          );
         }
 
         final requests = snapshot.data ?? [];
 
         if (requests.isEmpty) {
-          return const Center(
+          return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.mark_email_unread_outlined,
-                    size: 64, color: Colors.grey),
-                SizedBox(height: 16),
+                    size: 64, color: Colors.white.withOpacity(0.5)),
+                const SizedBox(height: 16),
                 Text(
                   'No pending requests',
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                  style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.7)),
                 ),
               ],
             ),
@@ -212,27 +278,55 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   .getUserById(request.user1Id),
               builder: (context, userSnapshot) {
                 final senderUser = userSnapshot.data;
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: Colors.grey[800],
-                    child: const Icon(Icons.person, color: Colors.grey),
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        containerGradient1,
+                        containerGradient2,
+                        containerGradient3,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.1),
+                      width: 1,
+                    ),
                   ),
-                  title: Text(senderUser?.displayName ?? 'Unknown User'),
-                  subtitle: const Text('Wants to be your friend'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.check, color: Colors.green),
-                        onPressed: () =>
-                            _acceptFriendRequest(request.friendshipId),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: Colors.redAccent,
+                      child: Text(
+                        (senderUser?.displayName ?? 'U')[0].toUpperCase(),
+                        style: const TextStyle(color: Colors.white),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Colors.red),
-                        onPressed: () =>
-                            _declineFriendRequest(request.friendshipId),
-                      ),
-                    ],
+                    ),
+                    title: Text(
+                      senderUser?.displayName ?? 'Unknown User',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    subtitle: Text(
+                      'Wants to be your friend',
+                      style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.check, color: Colors.green),
+                          onPressed: () =>
+                              _acceptFriendRequest(request.friendshipId),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.red),
+                          onPressed: () =>
+                              _declineFriendRequest(request.friendshipId),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },

@@ -2,11 +2,48 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sportify_app/models/user_model.dart';
+import 'package:sportify_app/services/interfaces/auth_service_interface.dart';
+import 'package:sportify_app/repositories/user_repository.dart';
 
-class AuthService {
+/// Authentication Service Implementation
+/// Applies Single Responsibility Principle (SRP) - handles only authentication
+/// Implements IAuthService interface - Dependency Inversion Principle (DIP)
+class AuthService implements IAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final UserRepository _userRepository;
+  GoogleSignIn? _googleSignIn;
+  bool _googleSignInAvailable = true;
+
+  /// Constructor with dependency injection
+  /// Applies Dependency Inversion Principle (DIP)
+  AuthService({UserRepository? userRepository})
+      : _userRepository = userRepository ?? UserRepository();
+  
+  // Lazy initialization of GoogleSignIn to avoid errors if Client ID is not configured
+  // We use a function instead of a getter to better handle errors
+  GoogleSignIn? _getGoogleSignInInstance() {
+    if (_googleSignIn == null && _googleSignInAvailable) {
+      try {
+        // Try to create GoogleSignIn - this may throw an assertion error on web
+        // if Client ID is not configured
+        _googleSignIn = GoogleSignIn();
+        // Test if it's actually working by checking if we can access it
+        // (this will fail silently if there's an issue)
+      } on AssertionError catch (e) {
+        // Catch assertion errors specifically (these happen in debug mode)
+        print("Google Sign-In assertion error (Client ID not configured): $e");
+        _googleSignInAvailable = false;
+        _googleSignIn = null;
+        return null;
+      } catch (e) {
+        print("Google Sign-In initialization failed: $e");
+        _googleSignInAvailable = false;
+        _googleSignIn = null;
+        return null;
+      }
+    }
+    return _googleSignIn;
+  }
 
   /// Getter to expose the current user from Firebase Auth
   User? get currentUser => _auth.currentUser;
@@ -23,14 +60,10 @@ class AuthService {
   }
 
   /// Helper to get UserModel from Firestore
+  /// Uses repository pattern for data access (Abstraction)
   Future<UserModel?> _getUserModel(String uid) async {
     try {
-      final doc = await _firestore.collection('users').doc(uid).get();
-      if (doc.exists) {
-        return UserModel.fromJson(doc.data()!);
-      } else {
-        return null;
-      }
+      return await _userRepository.getUserById(uid);
     } catch (e) {
       print("Error fetching user model: $e");
       return null;
@@ -61,10 +94,8 @@ class AuthService {
           role: UserRole.user,
         );
 
-        await _firestore
-            .collection('users')
-            .doc(firebaseUser.uid)
-            .set(newUser.toJson());
+        // Use repository for data access (Abstraction)
+        await _userRepository.createUser(newUser);
 
         return firebaseUser;
       }
@@ -97,9 +128,37 @@ class AuthService {
   /// Sign In with Google
   Future<User?> signInWithGoogle() async {
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      // Check if Google Sign-In is available
+      final googleSignIn = _getGoogleSignInInstance();
+      if (googleSignIn == null || !_googleSignInAvailable) {
+        throw Exception(
+          'Google Sign-In is not configured. Please add your Google Client ID to web/index.html. '
+          'Replace YOUR_CLIENT_ID in web/index.html with your actual Google OAuth 2.0 Client ID.'
+        );
+      }
+      
+      // Try silent sign-in first, but catch errors (web can throw null bool errors)
+      GoogleSignInAccount? googleUser;
+      try {
+        googleUser = await googleSignIn.signInSilently();
+      } catch (e) {
+        // Silent sign-in failed or threw an error (common on web)
+        // This is expected behavior, continue to regular sign-in
+        print("Silent sign-in not available: $e");
+        googleUser = null;
+      }
+      
+      // If silent sign-in fails, use regular sign-in
       if (googleUser == null) {
-        return null;
+        try {
+          googleUser = await googleSignIn.signIn();
+        } catch (e) {
+          print("Error during Google sign-in: $e");
+          rethrow;
+        }
+        if (googleUser == null) {
+          return null; // User cancelled
+        }
       }
 
       final GoogleSignInAuthentication googleAuth =
@@ -124,28 +183,35 @@ class AuthService {
             createdAt: DateTime.now(),
             role: UserRole.user,
           );
-          await _firestore
-              .collection('users')
-              .doc(firebaseUser.uid)
-              .set(newUser.toJson());
+          // Use repository for data access (Abstraction)
+          await _userRepository.createUser(newUser);
         }
         return firebaseUser;
       }
       return null;
     } catch (e) {
       print("Error signing in with Google: $e");
-      return null;
+      rethrow; // Re-throw so the UI can show the error message
     }
   }
 
   /// Sign Out
   Future<void> signOut() async {
     try {
-      if (await _googleSignIn.isSignedIn()) {
-        await _googleSignIn.signOut();
+      final googleSignIn = _getGoogleSignInInstance();
+      if (googleSignIn != null && _googleSignInAvailable) {
+        try {
+          if (await googleSignIn.isSignedIn()) {
+            await googleSignIn.signOut();
+          }
+        } catch (e) {
+          // Ignore Google sign out errors
+          print("Error signing out from Google: $e");
+        }
       }
       await _auth.signOut();
     } catch (e) {
+      // Even if Google sign out fails, still sign out from Firebase
       await _auth.signOut();
     }
   }
