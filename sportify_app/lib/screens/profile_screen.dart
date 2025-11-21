@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sportify_app/models/user_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
-import 'package:sportify_app/services/firestore_service.dart';
-// Make sure to point this to the correct location or use FirestoreService if you merged them
 import 'package:sportify_app/services/profile_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -30,7 +28,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _loadCurrentUser() async {
     final authService = Provider.of<AuthService>(context, listen: false);
-    // Note: If you moved getUserProfile to FirestoreService, update this line:
     final profileService = Provider.of<ProfileService>(context, listen: false);
 
     try {
@@ -97,11 +94,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // Added Sign Out Function
   void _signOut() {
     final authService = Provider.of<AuthService>(context, listen: false);
     authService.signOut();
-    // The AuthWrapper in main.dart will automatically take them to Login
   }
 
   void _onTeamsUpdated(List<String> teams) {
@@ -119,7 +114,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // We removed the Scaffold and AppBar so it fits nicely in the Tabs
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: Padding(
@@ -136,10 +130,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 32),
               _buildActionButtons(),
 
-              // --- NEW SIGNOUT BUTTON ---
               const SizedBox(height: 40),
               const Divider(),
-              const SizedBox(height: 20),
+
+              // Sign Out Button (Only)
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -153,7 +147,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   label: const Text('Sign Out'),
                 ),
               ),
-              const SizedBox(height: 40), // Extra space at bottom
+              const SizedBox(height: 40),
             ],
           ),
         ),
@@ -171,9 +165,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 8),
         TextButton.icon(
-          onPressed: () {
-            // TODO: Implement image picker
-          },
+          onPressed: () {},
           icon: const Icon(Icons.camera_alt),
           label: const Text('Change Photo'),
         ),

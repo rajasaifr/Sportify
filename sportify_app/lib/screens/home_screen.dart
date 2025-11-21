@@ -21,7 +21,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
-    // We have 4 tabs: Lobby, Room, Friends, Profile
+    // 4 Tabs: Lobby, Room, Friends, Profile
     _tabController = TabController(length: 4, vsync: this);
     _tabController.addListener(() {
       setState(() {});
@@ -63,6 +63,7 @@ class _HomeScreenState extends State<HomeScreen>
           indicatorColor: Colors.redAccent,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.grey,
+          // Text Only Tabs
           tabs: const [
             Tab(text: "Lobby"),
             Tab(text: "Room"),
@@ -74,20 +75,20 @@ class _HomeScreenState extends State<HomeScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          // 1. Lobby View
+          // 1. Lobby
           _buildLobbyView(context),
 
-          // 2. Create Room View
+          // 2. Create Room
           const CreateRoomScreen(),
 
-          // 3. Friends View
+          // 3. Friends
           const FriendsScreen(),
 
-          // 4. Profile View
+          // 4. Profile
           const ProfileScreen(),
         ],
       ),
-      // Floating Action Button removed as requested
+      // No Floating Action Button
     );
   }
 
@@ -106,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen>
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
           return const Center(
             child: Text(
-              'No public rooms available.\nGo to the "Room" tab to start one!',
+              'No public rooms available.\nGo to the "Room" tab to create one!',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 18),
             ),

@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:sportify_app/models/user_model.dart'; // Adjust path if needed
+import 'package:sportify_app/models/user_model.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -12,7 +12,6 @@ class AuthService {
   User? get currentUser => _auth.currentUser;
 
   /// Stream to listen for auth changes (e.g., login/logout)
-  /// This is how your app will know if the user is logged in.
   Stream<UserModel?> get authStateChanges {
     return _auth.authStateChanges().asyncMap((firebaseUser) async {
       if (firebaseUser == null) {
@@ -30,63 +29,54 @@ class AuthService {
       if (doc.exists) {
         return UserModel.fromJson(doc.data()!);
       } else {
-        return null; // Should not happen if signUp is correct
+        return null;
       }
     } catch (e) {
-      print("Error fetching user model: $e"); // Use logger in production
+      print("Error fetching user model: $e");
       return null;
     }
   }
 
-  /// Sign Up with Email & Password (UC-01 from your docs)
-  /// This creates the user in Auth AND saves their data to Firestore.
-Future<User?> signUpWithEmail({
-  required String email,
-  required String password,
-  required String displayName,
-}) async {
-  try {
-    // 1. Create user in Firebase Auth
-    UserCredential userCredential =
-        await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-
-    User? firebaseUser = userCredential.user;
-
-    if (firebaseUser != null) {
-      // 2. Create our UserModel
-      UserModel newUser = UserModel(
-        uid: firebaseUser.uid,
-        email: firebaseUser.email!,
-        displayName: displayName,
-        createdAt: DateTime.now(),
-        role: UserRole.user,
+  /// Sign Up with Email & Password
+  Future<User?> signUpWithEmail({
+    required String email,
+    required String password,
+    required String displayName,
+  }) async {
+    try {
+      UserCredential userCredential =
+          await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
       );
 
-      // 3. Save the UserModel to Firestore
-      await _firestore
-          .collection('users')
-          .doc(firebaseUser.uid)
-          .set(newUser.toJson());
+      User? firebaseUser = userCredential.user;
 
-      // REMOVE THIS LINE - Don't sign out after sign up!
-      // await _auth.signOut();
+      if (firebaseUser != null) {
+        UserModel newUser = UserModel(
+          uid: firebaseUser.uid,
+          email: firebaseUser.email!,
+          displayName: displayName,
+          createdAt: DateTime.now(),
+          role: UserRole.user,
+        );
 
-      return firebaseUser;
+        await _firestore
+            .collection('users')
+            .doc(firebaseUser.uid)
+            .set(newUser.toJson());
+
+        return firebaseUser;
+      }
+      return null;
+    } on FirebaseAuthException catch (e) {
+      throw e;
+    } catch (e) {
+      throw Exception("An unknown error occurred during sign up.");
     }
-    return null;
-  } on FirebaseAuthException catch (e) {
-    print("FirebaseAuthException: $e");
-    return null;
-  } catch (e) {
-    print("Error signing up: $e");
-    return null;
   }
-}
 
-  /// Sign In with Email & Password (UC-02)
+  /// Sign In with Email & Password
   Future<User?> signInWithEmail({
     required String email,
     required String password,
@@ -98,45 +88,35 @@ Future<User?> signUpWithEmail({
       );
       return userCredential.user;
     } on FirebaseAuthException catch (e) {
-      print("FirebaseAuthException: $e"); // Use logger
-      // Handle errors (e.g., wrong-password, user-not-found)
-      return null;
+      throw e;
     } catch (e) {
-      print("Error signing in: $e"); // Use logger
-      return null;
+      throw Exception("An unknown error occurred during sign in.");
     }
   }
 
-  /// Sign In with Google (UC-01)
+  /// Sign In with Google
   Future<User?> signInWithGoogle() async {
     try {
-      // 1. Trigger the Google Sign-In flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        // User cancelled the flow
         return null;
       }
 
-      // 2. Obtain the auth details from the request
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
 
-      // 3. Create a new credential
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // 4. Sign in to Firebase with the credential
       UserCredential userCredential =
           await _auth.signInWithCredential(credential);
 
       User? firebaseUser = userCredential.user;
 
       if (firebaseUser != null) {
-        // 5. Check if this is a new user
         if (userCredential.additionalUserInfo?.isNewUser == true) {
-          // This is the first time they logged in - create their Firestore doc
           UserModel newUser = UserModel(
             uid: firebaseUser.uid,
             email: firebaseUser.email!,
@@ -153,23 +133,38 @@ Future<User?> signUpWithEmail({
       }
       return null;
     } catch (e) {
-      print("Error signing in with Google: $e"); // Use logger
+      print("Error signing in with Google: $e");
       return null;
     }
   }
 
   /// Sign Out
   Future<void> signOut() async {
-  try {
-    // Only use Google Sign Out on supported platforms
-    if (await _googleSignIn.isSignedIn()) {
-      await _googleSignIn.signOut();
+    try {
+      if (await _googleSignIn.isSignedIn()) {
+        await _googleSignIn.signOut();
+      }
+      await _auth.signOut();
+    } catch (e) {
+      await _auth.signOut();
     }
-    await _auth.signOut();
-  } catch (e) {
-    print("Error signing out: $e");
-    // Still try to sign out from Firebase even if Google fails
-    await _auth.signOut();
   }
-}
+
+  /// Forgot Password
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  /// Change Password
+  Future<void> changePassword(String newPassword) async {
+    try {
+      await _auth.currentUser?.updatePassword(newPassword);
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
 }
