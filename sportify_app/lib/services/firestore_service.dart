@@ -13,7 +13,7 @@ import 'package:sportify_app/repositories/friendship_repository.dart';
 /// Applies Single Responsibility Principle (SRP) - coordinates between repositories
 /// Implements IFirestoreService interface - Dependency Inversion Principle (DIP)
 class FirestoreService implements IFirestoreService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
   final UserRepository _userRepository;
   final RoomRepository _roomRepository;
   final FriendshipRepository _friendshipRepository;
@@ -88,11 +88,34 @@ class FirestoreService implements IFirestoreService {
       QuerySnapshot snapshot = await _firestore.collection('videos').get();
 
       // 2. Map each document into a VideoContent object
-      List<VideoContent> videos = snapshot.docs.map((doc) {
-        // Use fromJson to convert the Map to our model
-        return VideoContent.fromJson(doc.data() as Map<String, dynamic>);
-      }).toList();
+      List<VideoContent> videos = [];
+      for (var doc in snapshot.docs) {
+        try {
+          final data = doc.data() as Map<String, dynamic>;
+          // Debug: Print document data
+          print("📹 Processing video document: ${doc.id}");
+          print("   Fields: ${data.keys.toList()}");
+          
+          // Check for common issues
+          if (!data.containsKey('contentId') && data.containsKey('contenId')) {
+            print("⚠️ Found typo: 'contenId' should be 'contentId'");
+          }
+          if (data['videoUrls'] is String) {
+            print("⚠️ videoUrls is a string, should be a map");
+          }
+          if (data['thumbnailUrl'] is Map) {
+            print("⚠️ thumbnailUrl is a map, should be a string");
+          }
+          
+          videos.add(VideoContent.fromJson(data));
+        } catch (e, stackTrace) {
+          print("❌ Error parsing video document ${doc.id}: $e");
+          print("   Stack trace: $stackTrace");
+          // Continue with other documents
+        }
+      }
 
+      print("✅ Successfully loaded ${videos.length} videos");
       return videos;
     } catch (e) {
       print("Error fetching videos: $e"); // Use logger in production
