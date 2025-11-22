@@ -36,7 +36,6 @@ class _RoomScreenState extends State<RoomScreen> {
   // Video synchronization state
   bool _isHost = false;
   bool _isLocalPaused = false; // Member's local pause state
-  double _localPauseTime = 0.0; // Time when member paused
   double _hostCurrentTime = 0.0;
   bool _hostIsPlaying = false;
   StreamSubscription<PlaybackState?>? _hostStateSubscription;
@@ -149,17 +148,6 @@ class _RoomScreenState extends State<RoomScreen> {
       // Note: This is a simplified approach - in production, you'd use YouTube IFrame API properly
       // For now, we'll track time locally and update from host state
       return _hostCurrentTime;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  Future<bool?> _isVideoPlaying() async {
-    if (!kIsWeb || _youtubeIframe == null) return null;
-    
-    try {
-      // Return host's playing state for synchronization
-      return _hostIsPlaying && !_isLocalPaused;
     } catch (e) {
       return null;
     }
@@ -284,32 +272,6 @@ class _RoomScreenState extends State<RoomScreen> {
       if (mounted) {
         setState(() => _isSyncing = false);
       }
-    }
-  }
-
-  Future<void> _handleMemberPause() async {
-    if (_isHost) return; // Host controls affect everyone, handled separately
-    
-    final currentTime = await _getCurrentTime();
-    if (currentTime != null) {
-      setState(() {
-        _isLocalPaused = true;
-        _localPauseTime = currentTime;
-      });
-      await _pauseVideo();
-    }
-  }
-
-  Future<void> _handleMemberResume() async {
-    if (_isHost) return;
-    
-    if (_isLocalPaused) {
-      // Resume from where member paused
-      await _seekTo(_localPauseTime);
-      await _resumeVideo();
-      setState(() {
-        _isLocalPaused = false;
-      });
     }
   }
 

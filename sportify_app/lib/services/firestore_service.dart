@@ -112,7 +112,8 @@ class FirestoreService implements IFirestoreService {
     try {
       return await _roomRepository.getRoomById(roomId);
     } catch (e) {
-      Logger.error("Error fetching room by ID", error: e, tag: 'FirestoreService');
+      Logger.error("Error fetching room by ID",
+          error: e, tag: 'FirestoreService');
       return null;
     }
   }
@@ -148,7 +149,8 @@ class FirestoreService implements IFirestoreService {
       // First, try to get by document ID (most common case)
       final doc = await _firestore.collection('videos').doc(contentId).get();
       if (doc.exists) {
-        Logger.debug("Video found by document ID: $contentId", tag: 'FirestoreService');
+        Logger.debug("Video found by document ID: $contentId",
+            tag: 'FirestoreService');
         final data = doc.data()!;
         // Ensure contentId is set correctly
         return VideoContent.fromJson({
@@ -156,17 +158,20 @@ class FirestoreService implements IFirestoreService {
           'contentId': data['contentId'] ?? data['contenId'] ?? contentId,
         });
       }
-      
+
       // If not found by document ID, query by contentId field
-      Logger.debug("Video not found by document ID, querying by contentId field: $contentId", tag: 'FirestoreService');
+      Logger.debug(
+          "Video not found by document ID, querying by contentId field: $contentId",
+          tag: 'FirestoreService');
       final querySnapshot = await _firestore
           .collection('videos')
           .where('contentId', isEqualTo: contentId)
           .limit(1)
           .get();
-      
+
       if (querySnapshot.docs.isNotEmpty) {
-        Logger.debug("Video found by contentId field query", tag: 'FirestoreService');
+        Logger.debug("Video found by contentId field query",
+            tag: 'FirestoreService');
         final doc = querySnapshot.docs.first;
         final data = doc.data();
         return VideoContent.fromJson({
@@ -174,16 +179,17 @@ class FirestoreService implements IFirestoreService {
           'contentId': data['contentId'] ?? data['contenId'] ?? contentId,
         });
       }
-      
+
       // Also try with the typo 'contenId' field
       final typoQuerySnapshot = await _firestore
           .collection('videos')
           .where('contenId', isEqualTo: contentId)
           .limit(1)
           .get();
-      
+
       if (typoQuerySnapshot.docs.isNotEmpty) {
-        Logger.debug("Video found by contenId (typo) field query", tag: 'FirestoreService');
+        Logger.debug("Video found by contenId (typo) field query",
+            tag: 'FirestoreService');
         final doc = typoQuerySnapshot.docs.first;
         final data = doc.data();
         return VideoContent.fromJson({
@@ -191,11 +197,13 @@ class FirestoreService implements IFirestoreService {
           'contentId': data['contentId'] ?? data['contenId'] ?? contentId,
         });
       }
-      
-      Logger.warning("Video not found with contentId: $contentId", tag: 'FirestoreService');
+
+      Logger.warning("Video not found with contentId: $contentId",
+          tag: 'FirestoreService');
       return null;
     } catch (e) {
-      Logger.error("Error fetching video by ID", error: e, tag: 'FirestoreService');
+      Logger.error("Error fetching video by ID",
+          error: e, tag: 'FirestoreService');
       return null;
     }
   }
@@ -214,28 +222,35 @@ class FirestoreService implements IFirestoreService {
         try {
           final data = doc.data() as Map<String, dynamic>;
           // Debug: Log document data
-          Logger.debug("Processing video document: ${doc.id}", tag: 'FirestoreService');
-          Logger.debug("Fields: ${data.keys.toList()}", tag: 'FirestoreService');
-          
+          Logger.debug("Processing video document: ${doc.id}",
+              tag: 'FirestoreService');
+          Logger.debug("Fields: ${data.keys.toList()}",
+              tag: 'FirestoreService');
+
           // Check for common issues
           if (!data.containsKey('contentId') && data.containsKey('contenId')) {
-            Logger.warning("Found typo: 'contenId' should be 'contentId'", tag: 'FirestoreService');
+            Logger.warning("Found typo: 'contenId' should be 'contentId'",
+                tag: 'FirestoreService');
           }
           if (data['videoUrls'] is String) {
-            Logger.debug("videoUrls is a string, will convert to map", tag: 'FirestoreService');
+            Logger.debug("videoUrls is a string, will convert to map",
+                tag: 'FirestoreService');
           }
           if (data['thumbnailUrl'] is Map) {
-            Logger.debug("thumbnailUrl is a map, will extract youtube value", tag: 'FirestoreService');
+            Logger.debug("thumbnailUrl is a map, will extract youtube value",
+                tag: 'FirestoreService');
           }
-          
+
           videos.add(VideoContent.fromJson(data));
         } catch (e, stackTrace) {
-          Logger.error("Error parsing video document ${doc.id}", error: e, stackTrace: stackTrace, tag: 'FirestoreService');
+          Logger.error("Error parsing video document ${doc.id}",
+              error: e, stackTrace: stackTrace, tag: 'FirestoreService');
           // Continue with other documents
         }
       }
 
-      Logger.info("Successfully loaded ${videos.length} videos", tag: 'FirestoreService');
+      Logger.info("Successfully loaded ${videos.length} videos",
+          tag: 'FirestoreService');
       return videos;
     } catch (e) {
       Logger.error("Error fetching videos", error: e, tag: 'FirestoreService');
@@ -267,7 +282,8 @@ class FirestoreService implements IFirestoreService {
       // Use repository for data access (Abstraction)
       await _friendshipRepository.createFriendship(newRequest);
     } catch (e) {
-      Logger.error("Error sending friend request", error: e, tag: 'FirestoreService');
+      Logger.error("Error sending friend request",
+          error: e, tag: 'FirestoreService');
       rethrow;
     }
   }
@@ -308,7 +324,8 @@ class FirestoreService implements IFirestoreService {
           .doc(messageId)
           .set(newMessage.toJson());
     } catch (e) {
-      Logger.error("Error sending chat message", error: e, tag: 'FirestoreService');
+      Logger.error("Error sending chat message",
+          error: e, tag: 'FirestoreService');
     }
   }
 
@@ -357,7 +374,8 @@ class FirestoreService implements IFirestoreService {
         FriendshipStatus.accepted,
       );
     } catch (e) {
-      Logger.error("Error accepting friend request", error: e, tag: 'FirestoreService');
+      Logger.error("Error accepting friend request",
+          error: e, tag: 'FirestoreService');
       throw Exception('Failed to accept friend request');
     }
   }
@@ -368,7 +386,8 @@ class FirestoreService implements IFirestoreService {
       // Use repository for data access (Abstraction)
       await _friendshipRepository.deleteFriendship(friendshipId);
     } catch (e) {
-      Logger.error("Error declining friend request", error: e, tag: 'FirestoreService');
+      Logger.error("Error declining friend request",
+          error: e, tag: 'FirestoreService');
       throw Exception('Failed to decline friend request');
     }
   }
@@ -385,7 +404,8 @@ class FirestoreService implements IFirestoreService {
       // Use repository for data access (Abstraction)
       return await _userRepository.getUserById(userId);
     } catch (e) {
-      Logger.error("Error getting user by ID", error: e, tag: 'FirestoreService');
+      Logger.error("Error getting user by ID",
+          error: e, tag: 'FirestoreService');
       return null;
     }
   }
@@ -398,7 +418,8 @@ class FirestoreService implements IFirestoreService {
       return await _friendshipRepository.getFriendshipBetweenUsers(
           user1Id, user2Id);
     } catch (e) {
-      Logger.error("Error checking friendship", error: e, tag: 'FirestoreService');
+      Logger.error("Error checking friendship",
+          error: e, tag: 'FirestoreService');
       return null;
     }
   }
@@ -411,7 +432,8 @@ class FirestoreService implements IFirestoreService {
           await getFriendshipBetweenUsers(currentUserId, otherUserId);
       return friendship?.status;
     } catch (e) {
-      Logger.error("Error getting friendship status", error: e, tag: 'FirestoreService');
+      Logger.error("Error getting friendship status",
+          error: e, tag: 'FirestoreService');
       return null;
     }
   }
@@ -422,7 +444,8 @@ class FirestoreService implements IFirestoreService {
       // Use repository for data access (Abstraction)
       await _friendshipRepository.deleteFriendship(friendshipId);
     } catch (e) {
-      Logger.error("Error deleting friendship", error: e, tag: 'FirestoreService');
+      Logger.error("Error deleting friendship",
+          error: e, tag: 'FirestoreService');
       throw Exception('Failed to delete friendship');
     }
   }
@@ -454,12 +477,14 @@ class FirestoreService implements IFirestoreService {
           .doc(userId)
           .set(playbackState.toJson(), SetOptions(merge: true));
     } catch (e) {
-      Logger.error("Error updating playback state", error: e, tag: 'FirestoreService');
+      Logger.error("Error updating playback state",
+          error: e, tag: 'FirestoreService');
     }
   }
 
   /// Gets the host's playback state for a room
-  Stream<PlaybackState?> getHostPlaybackStateStream(String roomId, String hostId) {
+  Stream<PlaybackState?> getHostPlaybackStateStream(
+      String roomId, String hostId) {
     return _firestore
         .collection('rooms')
         .doc(roomId)
@@ -475,7 +500,8 @@ class FirestoreService implements IFirestoreService {
   }
 
   /// Gets a user's playback state
-  Stream<PlaybackState?> getUserPlaybackStateStream(String roomId, String userId) {
+  Stream<PlaybackState?> getUserPlaybackStateStream(
+      String roomId, String userId) {
     return _firestore
         .collection('rooms')
         .doc(roomId)
