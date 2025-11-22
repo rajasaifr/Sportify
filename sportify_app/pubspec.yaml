@@ -14,10 +14,12 @@ dependencies:
   firebase_core: ^2.32.0
   firebase_auth: ^4.20.0
   cloud_firestore: ^4.17.5
+  firebase_storage: ^11.7.7
   google_sign_in: ^6.2.1
   provider: ^6.1.2
   http: ^1.2.0
   flutter_inappwebview: ^5.8.0
+  image_picker: ^1.0.7
   
   # --- CRITICAL FIX: ADDING THE SVG PACKAGE ---
   flutter_svg: ^2.0.10+1

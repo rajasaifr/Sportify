@@ -4,6 +4,7 @@ import 'package:sportify_app/models/user_model.dart';
 import 'package:sportify_app/models/sport_model.dart';
 import 'package:sportify_app/models/team_model.dart';
 import 'package:sportify_app/models/room_model.dart';
+import 'package:sportify_app/models/video_content_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/profile_service.dart';
 import 'package:sportify_app/services/sports_api_service.dart';
@@ -26,6 +27,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+
+  // Expose tab controller for external access (used by RoomScreen)
+  TabController get tabController => _tabController;
+
   bool _isSidebarOpen = true; // Sidebar state
   final ScrollController _scrollController =
       ScrollController(); // To preserve scroll position
@@ -236,8 +241,13 @@ class _HomeScreenState extends State<HomeScreen>
           offset: const Offset(0, 50),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: AppTheme.primary.withValues(alpha: 0.2),
+              width: 1,
+            ),
           ),
           color: AppTheme.inputFill,
+          elevation: 8,
           child: Container(
             width: 40,
             height: 40,
@@ -280,11 +290,14 @@ class _HomeScreenState extends State<HomeScreen>
               value: 'manage',
               child: Row(
                 children: [
-                  Icon(Icons.settings, color: AppTheme.textMain, size: 20),
+                  Icon(Icons.settings, color: AppTheme.primary, size: 20),
                   SizedBox(width: 12),
                   Text(
                     'Manage account',
-                    style: TextStyle(color: AppTheme.textMain),
+                    style: TextStyle(
+                      color: AppTheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -297,7 +310,10 @@ class _HomeScreenState extends State<HomeScreen>
                   SizedBox(width: 12),
                   Text(
                     'Sign out',
-                    style: TextStyle(color: Colors.redAccent),
+                    style: TextStyle(
+                      color: Colors.redAccent,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -737,83 +753,6 @@ class _HomeScreenState extends State<HomeScreen>
                 },
               ),
 
-              const SizedBox(height: 24),
-
-              // Active Rooms Section
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Active Rooms',
-                  style: TextStyle(
-                    color: AppTheme.textMain,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.0,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              StreamBuilder<List<Room>>(
-                stream: firestoreService.getPublicRoomsStream(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(32.0),
-                        child: CircularProgressIndicator(
-                          color: AppTheme.primary,
-                        ),
-                      ),
-                    );
-                  }
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Error: ${snapshot.error}',
-                        style: const TextStyle(color: AppTheme.textFaint),
-                      ),
-                    );
-                  }
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16),
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: AppTheme.inputFill,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: AppTheme.primary.withValues(alpha: 0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'No public rooms available.\nGo to the "Room" tab to create one!',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: AppTheme.textFaint,
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-
-                  final rooms = snapshot.data!;
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: rooms.length,
-                    itemBuilder: (context, index) {
-                      final room = rooms[index];
-                      return _buildRoomCard(context, room);
-                    },
-                  );
-                },
-              ),
-
               const SizedBox(height: 32),
             ],
           ),
@@ -870,154 +809,199 @@ class _HomeScreenState extends State<HomeScreen>
         }
 
         final featuredRoom = snapshot.data!.first;
-        return Container(
-          height: 400,
-          margin: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: AppTheme.primary.withValues(alpha: 0.3),
-                blurRadius: 30,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Background Gradient (Opaque to block floating icons)
-              Container(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF1A0A2E), // Dark purple (opaque)
-                      AppTheme.bgStart,
-                      AppTheme.bgEnd,
-                    ],
+        return FutureBuilder<VideoContent?>(
+          future: firestoreService.getVideoById(featuredRoom.contentId),
+          builder: (context, videoSnapshot) {
+            final video = videoSnapshot.data;
+            final thumbnailUrl = video?.thumbnailUrl;
+
+            return Container(
+              width: double.infinity,
+              height: 400,
+              margin: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primary.withValues(alpha: 0.3),
+                    blurRadius: 30,
+                    spreadRadius: 5,
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                ),
+                ],
               ),
-              // Content Overlay
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: AppTheme.primary.withValues(alpha: 0.5),
-                    width: 2,
-                  ),
-                ),
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Stack(
+                  fit: StackFit.expand,
                   children: [
-                    const Text(
-                      'FEATURED',
-                      style: TextStyle(
-                        color: AppTheme.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2.0,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      featuredRoom.name,
-                      style: const TextStyle(
-                        color: AppTheme.textMain,
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                    if (featuredRoom.description != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        featuredRoom.description!,
-                        style: const TextStyle(
-                          color: AppTheme.textFaint,
-                          fontSize: 14,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        NeonButton(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    RoomScreen(room: featuredRoom),
-                              ),
-                            );
-                          },
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 32,
-                            vertical: 14,
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.play_arrow, color: Colors.white),
-                              SizedBox(width: 8),
-                              Text(
-                                'JOIN ROOM',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  letterSpacing: 1.0,
+                    // Video Thumbnail Background
+                    if (thumbnailUrl != null && thumbnailUrl.isNotEmpty)
+                      Positioned.fill(
+                        child: Image.network(
+                          thumbnailUrl,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.center,
+                          errorBuilder: (context, error, stackTrace) {
+                            // Fallback to gradient if image fails to load
+                            return Container(
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xFF1A0A2E),
+                                    AppTheme.bgStart,
+                                    AppTheme.bgEnd,
+                                  ],
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        NeonButton(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    RoomScreen(room: featuredRoom),
-                              ),
                             );
                           },
-                          isOutlined: true,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 14,
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.info_outline, color: AppTheme.primary),
-                              SizedBox(width: 8),
-                              Text(
-                                'MORE INFO',
-                                style: TextStyle(
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            // Show gradient while loading
+                            return Container(
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xFF1A0A2E),
+                                    AppTheme.bgStart,
+                                    AppTheme.bgEnd,
+                                  ],
+                                ),
+                              ),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes !=
+                                          null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                          loadingProgress.expectedTotalBytes!
+                                      : null,
                                   color: AppTheme.primary,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  letterSpacing: 1.0,
                                 ),
                               ),
-                            ],
+                            );
+                          },
+                        ),
+                      )
+                    else
+                      // Fallback gradient if no thumbnail
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color(0xFF1A0A2E),
+                                AppTheme.bgStart,
+                                AppTheme.bgEnd,
+                              ],
+                            ),
                           ),
                         ),
-                      ],
+                      ),
+                    // Gradient Overlay for text readability
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.7),
+                            Colors.black.withValues(alpha: 0.9),
+                          ],
+                        ),
+                      ),
+                    ),
+                    // Content Overlay
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: AppTheme.primary.withValues(alpha: 0.5),
+                          width: 2,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          const Text(
+                            'FEATURED',
+                            style: TextStyle(
+                              color: AppTheme.primary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2.0,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            featuredRoom.name,
+                            style: const TextStyle(
+                              color: AppTheme.textMain,
+                              fontSize: 32,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                          if (featuredRoom.description != null) ...[
+                            const SizedBox(height: 12),
+                            Text(
+                              featuredRoom.description!,
+                              style: const TextStyle(
+                                color: AppTheme.textFaint,
+                                fontSize: 14,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                          const SizedBox(height: 20),
+                          NeonButton(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      RoomScreen(room: featuredRoom),
+                                ),
+                              );
+                            },
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 32,
+                              vertical: 14,
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.play_arrow, color: Colors.white),
+                                SizedBox(width: 8),
+                                Text(
+                                  'JOIN ROOM',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -1204,90 +1188,6 @@ class _HomeScreenState extends State<HomeScreen>
                 textAlign: TextAlign.center,
               ),
             ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRoomCard(BuildContext context, Room room) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: NeonButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => RoomScreen(room: room),
-            ),
-          );
-        },
-        isOutlined: true,
-        padding: const EdgeInsets.all(16),
-        borderRadius: 16,
-        child: Row(
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppTheme.primary.withValues(alpha: 0.5),
-                  width: 1,
-                ),
-              ),
-              child: const Icon(
-                Icons.play_circle_outline,
-                color: AppTheme.primary,
-                size: 32,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    room.name,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textMain,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    room.description ?? 'No description',
-                    style: const TextStyle(
-                      color: AppTheme.textFaint,
-                      fontSize: 13,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppTheme.primary.withValues(alpha: 0.3),
-                  width: 1,
-                ),
-              ),
-              child: Text(
-                '${room.participants.length} 👤',
-                style: const TextStyle(
-                  color: AppTheme.primary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                ),
-              ),
-            ),
           ],
         ),
       ),

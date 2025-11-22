@@ -87,6 +87,14 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         if (mounted) {
           final createdRoom = await firestoreService.getRoomById(newRoomId);
           if (createdRoom != null && mounted) {
+            // Clear form fields before navigating
+            _nameController.clear();
+            _descriptionController.clear();
+            setState(() {
+              _selectedVideo = null;
+              _selectedRoomType = RoomType.public;
+            });
+            
             // Navigate to RoomScreen with the newly created room (use push, not pushReplacement)
             // This way, back button will return to CreateRoomScreen (Room tab)
             Navigator.of(context).push(
