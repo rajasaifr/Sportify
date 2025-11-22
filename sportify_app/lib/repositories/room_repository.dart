@@ -37,6 +37,22 @@ class RoomRepository {
     });
   }
 
+  /// Get all rooms stream (public and private)
+  Stream<List<Room>> getAllRoomsStream() {
+    return _firestore
+        .collection('rooms')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) {
+            final data = doc.data();
+            data['roomId'] = data['roomId'] ?? doc.id;
+            return Room.fromJson(data);
+          })
+          .toList();
+    });
+  }
+
   /// Get room by ID
   Future<Room?> getRoomById(String roomId) async {
     try {

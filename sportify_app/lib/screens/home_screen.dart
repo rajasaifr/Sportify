@@ -954,12 +954,7 @@ class _HomeScreenState extends State<HomeScreen>
                         const SizedBox(height: 20),
                         NeonButton(
                           onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    RoomScreen(room: featuredRoom),
-                              ),
-                            );
+                            _navigateToRoomWithVerification(context, featuredRoom);
                           },
                           padding: const EdgeInsets.symmetric(
                             horizontal: 32,
@@ -1180,6 +1175,139 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       ),
     );
+  }
+
+  /// Shows a dialog to enter room code for private rooms
+  Future<bool> _showRoomCodeDialog(BuildContext context, Room room) async {
+    final codeController = TextEditingController();
+    bool? result = false;
+    
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppTheme.inputFill,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: AppTheme.primary.withValues(alpha: 0.5),
+              width: 1,
+            ),
+          ),
+          title: const Text(
+            'Private Room',
+            style: TextStyle(color: AppTheme.textMain, fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'This room requires an access code.',
+                style: TextStyle(color: AppTheme.textFaint),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: codeController,
+                style: const TextStyle(color: AppTheme.textMain),
+                decoration: InputDecoration(
+                  labelText: 'Enter Room Code',
+                  labelStyle: const TextStyle(color: AppTheme.textFaint),
+                  hintText: 'e.g., Cr23AB',
+                  hintStyle: TextStyle(color: AppTheme.textFaint.withValues(alpha: 0.5)),
+                  filled: true,
+                  fillColor: AppTheme.inputFill,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppTheme.primary.withValues(alpha: 0.3)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppTheme.primary.withValues(alpha: 0.3)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: AppTheme.primary, width: 2),
+                  ),
+                ),
+                textAlign: TextAlign.center,
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 6,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                result = false;
+              },
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: AppTheme.textFaint),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final enteredCode = codeController.text.trim().toUpperCase();
+                if (enteredCode == room.roomCode?.toUpperCase()) {
+                  Navigator.of(dialogContext).pop();
+                  result = true;
+                } else {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(
+                      content: Text('Invalid room code. Please try again.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+              ),
+              child: const Text('Join'),
+            ),
+          ],
+        );
+      },
+    );
+    
+    return result ?? false;
+  }
+
+  /// Navigates to room screen with code verification for private rooms
+  Future<void> _navigateToRoomWithVerification(BuildContext context, Room room) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final currentUserId = authService.currentUser?.uid;
+    
+    // If user is the host, allow direct access
+    if (currentUserId == room.hostId) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => RoomScreen(room: room),
+        ),
+      );
+      return;
+    }
+    
+    // If room is private, ask for code
+    if (room.roomType == RoomType.private) {
+      final hasAccess = await _showRoomCodeDialog(context, room);
+      if (hasAccess && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => RoomScreen(room: room),
+          ),
+        );
+      }
+    } else {
+      // Public room, allow direct access
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => RoomScreen(room: room),
+        ),
+      );
+    }
   }
 
   IconData _getSportIcon(String sportName) {

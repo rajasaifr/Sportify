@@ -34,6 +34,23 @@ class FirestoreService implements IFirestoreService {
 
   // --- Room Functions (UC-08, UC-09, UC-10) ---
 
+  /// Generates a random room code for private rooms (format: Cr23AB)
+  String _generateRoomCode() {
+    final random = DateTime.now().millisecondsSinceEpoch;
+    final letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    final numbers = '0123456789';
+    
+    // Generate 2 letters + 2 numbers + 2 letters (e.g., Cr23AB)
+    final letter1 = letters[(random % letters.length)];
+    final letter2 = letters[((random ~/ letters.length) % letters.length)];
+    final num1 = numbers[((random ~/ (letters.length * letters.length)) % numbers.length)];
+    final num2 = numbers[((random ~/ (letters.length * letters.length * numbers.length)) % numbers.length)];
+    final letter3 = letters[((random ~/ (letters.length * letters.length * numbers.length * numbers.length)) % letters.length)];
+    final letter4 = letters[((random ~/ (letters.length * letters.length * letters.length * numbers.length * numbers.length)) % letters.length)];
+    
+    return '$letter1$letter2$num1$num2$letter3$letter4';
+  }
+
   /// Creates a new room (public, private, or rival) and saves it to Firestore.
   /// Returns the ID of the newly created room.
   /// Uses repository pattern (Abstraction, Encapsulation)
@@ -50,6 +67,9 @@ class FirestoreService implements IFirestoreService {
     try {
       // Create Room object
       final roomId = _firestore.collection('rooms').doc().id;
+      // Generate room code for private rooms
+      final roomCode = roomType == RoomType.private ? _generateRoomCode() : null;
+      
       Room newRoom = Room(
         roomId: roomId,
         name: name,
@@ -59,6 +79,7 @@ class FirestoreService implements IFirestoreService {
         participants: [hostId],
         createdAt: DateTime.now(),
         hostId: hostId,
+        roomCode: roomCode,
         team1Name: team1Name,
         team2Name: team2Name,
         competitiveFeatures: roomType == RoomType.rival,
@@ -78,6 +99,12 @@ class FirestoreService implements IFirestoreService {
   Stream<List<Room>> getPublicRoomsStream() {
     // Use repository for data access (Abstraction)
     return _roomRepository.getPublicRoomsStream();
+  }
+
+  /// Gets a real-time stream of all rooms (public and private)
+  @override
+  Stream<List<Room>> getAllRoomsStream() {
+    return _roomRepository.getAllRoomsStream();
   }
 
   /// Gets a single room by its ID

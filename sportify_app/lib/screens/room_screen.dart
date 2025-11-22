@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:sportify_app/models/room_model.dart';
 import 'package:sportify_app/models/video_content_model.dart';
@@ -496,6 +497,229 @@ class _RoomScreenState extends State<RoomScreen> {
     }
   }
 
+  void _insertEmoji(String emoji) {
+    final text = _messageController.text;
+    final selection = _messageController.selection;
+    final newText = text.replaceRange(
+      selection.start,
+      selection.end,
+      emoji,
+    );
+    _messageController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(
+        offset: selection.start + emoji.length,
+      ),
+    );
+  }
+
+  void _showEmojiPickerDialog() {
+    showDialog(
+      context: context,
+      barrierColor: Colors.transparent,
+      builder: (context) => Stack(
+        children: [
+          // Invisible barrier to close on outside tap
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+          // Emoji picker positioned on the right
+          Positioned(
+            right: 12,
+            bottom: 80, // Position above the message input
+            child: GestureDetector(
+              onTap: () {}, // Prevent closing when tapping inside
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  width: 350, // Match chat width
+                  height: 400,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1a1a2e),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: _buildEmojiPicker(),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmojiPicker() {
+    // Frequently used emojis (like WhatsApp)
+    final frequentlyUsed = ['😀', '😂', '🥰', '😍', '🤔', '😊', '👍', '❤️', '🔥', '💯', '🎉', '😎', '😭', '😡', '🤯', '🥳'];
+    
+    // Emoji categories with icons
+    final emojiCategories = [
+      {'name': 'Frequently Used', 'icon': Icons.access_time, 'emojis': frequentlyUsed},
+      {'name': 'Smileys', 'icon': Icons.sentiment_satisfied, 'emojis': ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓']},
+      {'name': 'Gestures', 'icon': Icons.waving_hand, 'emojis': ['👋', '🤚', '🖐', '✋', '🖖', '👌', '🤌', '🤏', '✌️', '🤞', '🤟', '🤘', '🤙', '👈', '👉', '👆', '🖕', '👇', '☝️', '👍', '👎', '✊', '👊', '🤛', '🤜', '👏', '🙌', '👐', '🤲', '🤝', '🙏', '✍️', '💪', '🦵', '🦶', '👂', '🦻', '👃', '🧠', '🫀', '🫁', '🦷', '🦴', '👀', '👁️', '👅', '👄']},
+      {'name': 'Sports', 'icon': Icons.sports_soccer, 'emojis': ['⚽', '🏀', '🏈', '⚾', '🥎', '🎾', '🏐', '🏉', '🥏', '🎱', '🏓', '🏸', '🏒', '🏑', '🥍', '🏏', '🥅', '⛳', '🏹', '🎣', '🥊', '🥋', '🎽', '🛹', '🛷', '⛸', '🥌', '🎿', '⛷', '🏂', '🏋️', '🤼', '🤸', '🤺', '🧘', '🏄', '🏊', '🚴', '🚵', '🧗', '🤹', '🏇']},
+      {'name': 'Reactions', 'icon': Icons.favorite, 'emojis': ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝', '💟', '☮️', '✝️', '☪️', '🕉', '☸️', '✡️', '🔯', '🕎', '☯️', '☦️', '🛐', '⛎', '✅', '❌', '❓', '❔', '❗', '❕', '💯', '🔴', '🟠', '🟡', '🟢', '🔵', '🟣', '⚫', '⚪', '🟤']},
+      {'name': 'Objects', 'icon': Icons.auto_awesome, 'emojis': ['🔥', '💯', '⭐', '🌟', '✨', '💫', '⚡', '☄️', '💥', '💢', '💤', '💨', '👁️', '👀', '🧠', '🗣️', '👤', '👥', '👶', '🧒', '👦', '👧', '🧑', '👨', '👩', '🧓', '👴', '👵', '🎁', '🎈', '🎉', '🎊', '🎀', '🎗️', '🏆', '🥇', '🥈', '🥉', '⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏉', '🎱', '🏓', '🏸', '🏒', '🏑', '🏏', '🎯', '🎲', '🎮', '🎰', '🎨', '🧩', '♠️', '♥️', '♦️', '♣️', '🃏', '🀄', '🎴', '🎭', '🖼️', '🎨', '🖌️', '🖍️', '✏️', '✒️', '🖊️', '🖋️', '📝', '💼', '📁', '📂', '🗂️', '📅', '📆', '🗒️', '🗓️', '📇', '📈', '📉', '📊', '📋', '📌', '📍', '📎', '🖇️', '📏', '📐', '✂️', '🗃️', '🗄️', '🗑️']},
+    ];
+    
+    int selectedCategoryIndex = 0;
+    
+    return StatefulBuilder(
+      builder: (context, setPickerState) {
+        return Container(
+          height: 400,
+          child: Column(
+            children: [
+              // Category Tabs (WhatsApp style)
+              Container(
+                height: 50,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF16213e),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.1),
+                    ),
+                  ),
+                ),
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  itemCount: emojiCategories.length,
+                  itemBuilder: (context, index) {
+                    final category = emojiCategories[index];
+                    final isSelected = selectedCategoryIndex == index;
+                    return GestureDetector(
+                      onTap: () {
+                        setPickerState(() {
+                          selectedCategoryIndex = index;
+                        });
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFF6C5CE7).withValues(alpha: 0.3)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              category['icon'] as IconData,
+                              color: isSelected
+                                  ? const Color(0xFF6C5CE7)
+                                  : Colors.white.withValues(alpha: 0.6),
+                              size: 20,
+                            ),
+                            if (isSelected) ...[
+                              const SizedBox(width: 6),
+                              Text(
+                                category['name'] as String,
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? const Color(0xFF6C5CE7)
+                                      : Colors.white.withValues(alpha: 0.6),
+                                  fontSize: 12,
+                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              // Emoji Grid
+              Expanded(
+                child: GridView.builder(
+                  padding: const EdgeInsets.all(12),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 8,
+                    crossAxisSpacing: 4,
+                    mainAxisSpacing: 4,
+                    childAspectRatio: 1.0,
+                  ),
+                  itemCount: (emojiCategories[selectedCategoryIndex]['emojis'] as List).length,
+                  itemBuilder: (context, index) {
+                    final emoji = (emojiCategories[selectedCategoryIndex]['emojis'] as List)[index];
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          _insertEmoji(emoji);
+                          // Don't close immediately - allow multiple emoji selection
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.transparent,
+                          ),
+                          child: Center(
+                            child: Text(
+                              emoji,
+                              style: const TextStyle(fontSize: 28),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              // Close Button
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF16213e),
+                  border: Border(
+                    top: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.1),
+                    ),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, color: Colors.white70, size: 18),
+                      label: const Text(
+                        'Close',
+                        style: TextStyle(color: Colors.white70),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   bool _checkHostPresence() {
     // If current user is host, always allow
     if (_isHost) return true;
@@ -790,6 +1014,7 @@ class _RoomScreenState extends State<RoomScreen> {
           createdAt: _currentRoom.createdAt,
           hostId: _currentRoom.hostId,
           privacySettings: _currentRoom.privacySettings,
+          roomCode: _currentRoom.roomCode, // Preserve room code
           team1Name: _currentRoom.team1Name,
           team2Name: _currentRoom.team2Name,
           competitiveFeatures: result['roomType'] == RoomType.rival,
@@ -906,20 +1131,62 @@ class _RoomScreenState extends State<RoomScreen> {
           style: const TextStyle(color: Colors.white),
         ),
         iconTheme: const IconThemeData(color: Colors.white),
-        actions: _isHost
-            ? [
-                IconButton(
-                  icon: const Icon(Icons.edit),
-                  onPressed: _showEditRoomDialog,
-                  tooltip: 'Edit Room',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: _showDeleteRoomDialog,
-                  tooltip: 'Delete Room',
-                ),
-              ]
-            : null,
+        actions: [
+          // Room Code Display (for private rooms) - left of edit
+          if (_currentRoom.roomType == RoomType.private && _currentRoom.roomCode != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.lock,
+                    color: Colors.white.withValues(alpha: 0.7),
+                    size: 18,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _currentRoom.roomCode!,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    icon: const Icon(Icons.copy, size: 18),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: _currentRoom.roomCode!));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Room code copied: ${_currentRoom.roomCode}'),
+                          backgroundColor: const Color(0xFF6C5CE7),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    tooltip: 'Copy Room Code',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            ),
+          if (_isHost) ...[
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: _showEditRoomDialog,
+              tooltip: 'Edit Room',
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: _showDeleteRoomDialog,
+              tooltip: 'Delete Room',
+            ),
+          ],
+        ],
       ),
       body: Row(
         children: [
@@ -1248,10 +1515,27 @@ class _RoomScreenState extends State<RoomScreen> {
                   ),
                   child: Row(
                     children: [
+                      // Emoji Button
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          onPressed: _showEmojiPickerDialog,
+                          icon: const Icon(
+                            Icons.emoji_emotions,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                          tooltip: 'Add emoji',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: TextField(
                           controller: _messageController,
-                          style: const TextStyle(color: Colors.white),
+                          style: const TextStyle(color: Colors.white, fontSize: 16),
                           decoration: InputDecoration(
                             hintText: 'Type a message...',
                             hintStyle: TextStyle(
@@ -1381,7 +1665,8 @@ class _RoomScreenState extends State<RoomScreen> {
                         message.content,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 14,
+                          fontSize: 16,
+                          height: 1.4,
                         ),
                       ),
                       const SizedBox(height: 4),
