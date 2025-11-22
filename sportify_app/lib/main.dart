@@ -13,6 +13,7 @@ import 'package:sportify_app/services/interfaces/profile_service_interface.dart'
 
 // Screens
 import 'package:sportify_app/screens/auth_wrapper.dart';
+import 'package:sportify_app/utils/logger.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -33,7 +34,7 @@ void main() async {
             } catch (e) {
               // If AuthService creation fails, still create it
               // The lazy initialization will handle Google Sign-In errors
-              print("Warning: AuthService creation had issues: $e");
+              Logger.warning("AuthService creation had issues", error: e, tag: 'AuthService');
               return AuthService();
             }
           },

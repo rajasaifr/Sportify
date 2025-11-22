@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sportify_app/services/auth_service.dart';
+import 'package:sportify_app/utils/logger.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -61,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       if (_isSignup) {
-        print('🔄 Starting signup process...');
+        Logger.debug('Starting signup process', tag: 'LoginScreen');
         final user = await authService.signUpWithEmail(
           email: email,
           password: password,
@@ -69,22 +70,22 @@ class _LoginScreenState extends State<LoginScreen> {
         );
         
         if (user != null) {
-          print('✅ Signup successful!');
+          Logger.info('Signup successful', tag: 'LoginScreen');
           _showSnackBar('Account created! Welcome.');
         } else {
-          print('❌ Signup returned null');
+          Logger.warning('Signup returned null', tag: 'LoginScreen');
           _showSnackBar('Failed to create account. Please try again.');
         }
       } else {
-        print('🔄 Starting login process...');
+        Logger.debug('Starting login process', tag: 'LoginScreen');
         await authService.signInWithEmail(
           email: email,
           password: password,
         );
-        print('✅ Login successful!');
+        Logger.info('Login successful', tag: 'LoginScreen');
       }
     } on FirebaseAuthException catch (e) {
-      print('❌ FirebaseAuthException: ${e.code} - ${e.message}');
+      Logger.error('FirebaseAuthException: ${e.code}', error: e, tag: 'LoginScreen');
       String message = 'An error occurred';
       switch (e.code) {
         case 'invalid-credential':
@@ -110,8 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       _showSnackBar(message);
     } catch (e, stackTrace) {
-      print('❌ Unexpected error during ${_isSignup ? "signup" : "login"}: $e');
-      print('Stack trace: $stackTrace');
+      Logger.error('Unexpected error during ${_isSignup ? "signup" : "login"}', error: e, stackTrace: stackTrace, tag: 'LoginScreen');
       _showSnackBar('Error: ${e.toString()}');
     } finally {
       if (mounted) {
@@ -188,7 +188,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.blue.withOpacity(0.3),
+                    color: Colors.blue.withValues(alpha: 0.3),
                     blurRadius: 30,
                     offset: const Offset(0, 8),
                     spreadRadius: 2,
@@ -221,7 +221,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -231,20 +231,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           hintText: 'Email or mobile number',
-                          hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                           filled: true,
-                          fillColor: Colors.white.withOpacity(0.1),
+                          fillColor: Colors.white.withValues(alpha: 0.1),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: purpleButton, width: 2),
+                            borderSide: const BorderSide(color: purpleButton, width: 2),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -267,7 +267,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -276,20 +276,20 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
                             hintText: 'Enter your full name',
-                            hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                            hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                             filled: true,
-                            fillColor: Colors.white.withOpacity(0.1),
+                            fillColor: Colors.white.withValues(alpha: 0.1),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: purpleButton, width: 2),
+                              borderSide: const BorderSide(color: purpleButton, width: 2),
                             ),
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 16,
@@ -311,7 +311,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                           ),
                         ),
                       const SizedBox(height: 8),
@@ -321,20 +321,20 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           hintText: 'Enter your password',
-                          hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                           filled: true,
-                          fillColor: Colors.white.withOpacity(0.1),
+                          fillColor: Colors.white.withValues(alpha: 0.1),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: purpleButton, width: 2),
+                            borderSide: const BorderSide(color: purpleButton, width: 2),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
@@ -353,7 +353,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       alignment: Alignment.centerRight,
                       child: TextButton(
                         onPressed: () {
-                          // TODO: Implement forgot password
                           _showSnackBar('Forgot password feature coming soon');
                         },
                         style: TextButton.styleFrom(
@@ -361,7 +360,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           minimumSize: Size.zero,
                           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        child: Text(
+                        child: const Text(
                           'Forgot password?',
                           style: TextStyle(
                             color: linkColor,
@@ -428,7 +427,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ? 'Already have an account? '
                             : 'New to Sportify? ',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
+                          color: Colors.white.withValues(alpha: 0.7),
                           fontSize: 14,
                         ),
                       ),
@@ -445,7 +444,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         child: Text(
                           _isSignup ? 'Sign in' : 'Sign up',
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: linkColor,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -488,15 +487,15 @@ class _LoginScreenState extends State<LoginScreen> {
             ? const SizedBox.shrink()
             : Text(
                 text,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
               ),
         style: OutlinedButton.styleFrom(
-          backgroundColor: Colors.white.withOpacity(0.1),
-          side: BorderSide(color: Colors.white.withOpacity(0.3)),
+          backgroundColor: Colors.white.withValues(alpha: 0.1),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),

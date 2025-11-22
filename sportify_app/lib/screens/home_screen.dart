@@ -148,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen>
             height: 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
               image: profilePicUrl != null
                   ? DecorationImage(
                       image: NetworkImage(profilePicUrl),
@@ -171,26 +171,26 @@ class _HomeScreenState extends State<HomeScreen>
                 : null,
           ),
           itemBuilder: (BuildContext context) => [
-            PopupMenuItem<String>(
+            const PopupMenuItem<String>(
               value: 'manage',
               child: Row(
                 children: [
-                  const Icon(Icons.settings, color: Colors.white, size: 20),
-                  const SizedBox(width: 12),
-                  const Text(
+                  Icon(Icons.settings, color: Colors.white, size: 20),
+                  SizedBox(width: 12),
+                  Text(
                     'Manage account',
                     style: TextStyle(color: Colors.white),
                   ),
                 ],
               ),
             ),
-            PopupMenuItem<String>(
+            const PopupMenuItem<String>(
               value: 'signout',
               child: Row(
                 children: [
-                  const Icon(Icons.logout, color: Colors.redAccent, size: 20),
-                  const SizedBox(width: 12),
-                  const Text(
+                  Icon(Icons.logout, color: Colors.redAccent, size: 20),
+                  SizedBox(width: 12),
+                  Text(
                     'Sign out',
                     style: TextStyle(color: Colors.redAccent),
                   ),
@@ -275,11 +275,11 @@ class _HomeScreenState extends State<HomeScreen>
           );
         }
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(
+          return const Center(
             child: Text(
               'No public rooms available.\nGo to the "Room" tab to create one!',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 color: Colors.white,
               ),
@@ -308,7 +308,7 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   width: 1,
                 ),
               ),
@@ -318,7 +318,7 @@ class _HomeScreenState extends State<HomeScreen>
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    color: Colors.redAccent.withOpacity(0.2),
+                    color: Colors.redAccent.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(
@@ -336,14 +336,14 @@ class _HomeScreenState extends State<HomeScreen>
                 subtitle: Text(
                   room.description ?? 'No description',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
+                    color: Colors.white.withValues(alpha: 0.7),
                   ),
                 ),
                 trailing: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
