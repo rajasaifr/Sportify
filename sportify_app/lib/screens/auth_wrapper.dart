@@ -6,6 +6,7 @@ import 'package:sportify_app/models/user_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/screens/home_screen.dart';
 import 'package:sportify_app/screens/login_screen.dart';
+import 'package:sportify_app/utils/logger.dart';
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
@@ -53,7 +54,7 @@ class AuthWrapper extends StatelessWidget {
           .get();
       
       if (!userDoc.exists) {
-        print("📝 Creating missing user document for: ${firebaseUser.uid}");
+        Logger.info("Creating missing user document for: ${firebaseUser.uid}", tag: 'AuthWrapper');
         
         UserModel newUser = UserModel(
           uid: firebaseUser.uid,
@@ -70,10 +71,10 @@ class AuthWrapper extends StatelessWidget {
             .doc(firebaseUser.uid)
             .set(newUser.toJson());
             
-        print("✅ User document created successfully!");
+        Logger.info("User document created successfully", tag: 'AuthWrapper');
       }
     } catch (e) {
-      print("❌ Error ensuring user document: $e");
+      Logger.error("Error ensuring user document", error: e, tag: 'AuthWrapper');
     }
   }
 }

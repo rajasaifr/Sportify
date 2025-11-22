@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sportify_app/models/room_model.dart';
 import 'package:sportify_app/models/user_model.dart';
+import 'package:sportify_app/models/sport_model.dart';
+import 'package:sportify_app/models/team_model.dart';
 import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/profile_service.dart';
+import 'package:sportify_app/services/sports_api_service.dart';
 import 'package:sportify_app/screens/create_room_screen.dart';
 import 'package:sportify_app/screens/room_screen.dart';
 import 'package:sportify_app/screens/profile_screen.dart';
@@ -148,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen>
             height: 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
               image: profilePicUrl != null
                   ? DecorationImage(
                       image: NetworkImage(profilePicUrl),
@@ -171,26 +174,26 @@ class _HomeScreenState extends State<HomeScreen>
                 : null,
           ),
           itemBuilder: (BuildContext context) => [
-            PopupMenuItem<String>(
+            const PopupMenuItem<String>(
               value: 'manage',
               child: Row(
                 children: [
-                  const Icon(Icons.settings, color: Colors.white, size: 20),
-                  const SizedBox(width: 12),
-                  const Text(
+                  Icon(Icons.settings, color: Colors.white, size: 20),
+                  SizedBox(width: 12),
+                  Text(
                     'Manage account',
                     style: TextStyle(color: Colors.white),
                   ),
                 ],
               ),
             ),
-            PopupMenuItem<String>(
+            const PopupMenuItem<String>(
               value: 'signout',
               child: Row(
                 children: [
-                  const Icon(Icons.logout, color: Colors.redAccent, size: 20),
-                  const SizedBox(width: 12),
-                  const Text(
+                  Icon(Icons.logout, color: Colors.redAccent, size: 20),
+                  SizedBox(width: 12),
+                  Text(
                     'Sign out',
                     style: TextStyle(color: Colors.redAccent),
                   ),
@@ -254,118 +257,600 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildLobbyView(BuildContext context) {
-    final firestoreService = Provider.of<FirestoreService>(context);
+    return Row(
+      children: [
+        // Left Sidebar - Favorite Teams
+        _buildFavoriteTeamsSidebar(context),
+        
+        // Main Content Area
+        Expanded(
+          child: _buildMainContentArea(context),
+        ),
+      ],
+    );
+  }
 
-    return StreamBuilder<List<Room>>(
-      stream: firestoreService.getPublicRoomsStream(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(
-              color: Colors.redAccent,
-            ),
-          );
-        }
-        if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              'Error: ${snapshot.error}',
-              style: const TextStyle(color: Colors.white),
-            ),
-          );
-        }
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(
-            child: Text(
-              'No public rooms available.\nGo to the "Room" tab to create one!',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 18,
-                color: Colors.white,
-              ),
-            ),
-          );
-        }
+  Widget _buildFavoriteTeamsSidebar(BuildContext context) {
+    final authService = Provider.of<AuthService>(context);
+    final profileService = Provider.of<ProfileService>(context);
+    final currentUser = authService.currentUser;
+    final sportsApiService = SportsApiService();
 
-        final rooms = snapshot.data!;
+    return Container(
+      width: 250,
+      decoration: BoxDecoration(
+        color: const Color(0xFF16213e),
+        border: Border(
+          right: BorderSide(
+            color: Colors.white.withValues(alpha: 0.1),
+            width: 1,
+          ),
+        ),
+      ),
+      child: StreamBuilder<UserModel?>(
+        stream: currentUser != null
+            ? profileService.getUserProfileStream(currentUser.uid)
+            : Stream.value(null),
+        builder: (context, userSnapshot) {
+          final userModel = userSnapshot.data;
+          final favoriteTeams = userModel?.favoriteTeams ?? [];
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: rooms.length,
-          itemBuilder: (context, index) {
-            final room = rooms[index];
-            return Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF1a1a2e),
-                    Color(0xFF16213e),
-                    Color(0xFF0f3460),
+          if (favoriteTeams.isEmpty) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.favorite_border,
+                      size: 48,
+                      color: Colors.white.withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No favorite teams yet',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Add teams in your profile',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.1),
-                  width: 1,
+              ),
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text(
+                  'Favorite Teams',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-              child: ListTile(
-                contentPadding: const EdgeInsets.all(16),
-                leading: Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: Colors.redAccent.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.play_circle_outline,
-                    color: Colors.redAccent,
-                  ),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  itemCount: favoriteTeams.length,
+                  itemBuilder: (context, index) {
+                    final teamName = favoriteTeams[index];
+                    return FutureBuilder<Team?>(
+                      future: sportsApiService.getTeamByName(teamName),
+                      builder: (context, snapshot) {
+                        final team = snapshot.data;
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.1),
+                            ),
+                          ),
+                          child: ListTile(
+                            dense: true,
+                            leading: team?.logoUrl != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Image.network(
+                                      team!.logoUrl!,
+                                      width: 40,
+                                      height: 40,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) {
+                                        return Container(
+                                          width: 40,
+                                          height: 40,
+                                          decoration: BoxDecoration(
+                                            color: Colors.redAccent.withValues(alpha: 0.2),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: const Icon(
+                                            Icons.sports,
+                                            color: Colors.redAccent,
+                                            size: 20,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  )
+                                : Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: Colors.redAccent.withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Icon(
+                                      Icons.sports,
+                                      color: Colors.redAccent,
+                                      size: 20,
+                                    ),
+                                  ),
+                            title: Text(
+                              team?.name ?? teamName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: team?.sport != null
+                                ? Text(
+                                    team!.sport!,
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.6),
+                                      fontSize: 12,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        );
+                      },
+                    );
+                  },
                 ),
-                title: Text(
-                  room.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                subtitle: Text(
-                  room.description ?? 'No description',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
-                  ),
-                ),
-                trailing: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${room.participants.length} 👤',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500,
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildMainContentArea(BuildContext context) {
+    final firestoreService = Provider.of<FirestoreService>(context);
+    final sportsApiService = SportsApiService();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top Sports and Teams Section
+          FutureBuilder<List<Sport>>(
+            future: sportsApiService.getTopSports(limit: 5),
+            builder: (context, sportsSnapshot) {
+              if (sportsSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: CircularProgressIndicator(
+                      color: Colors.redAccent,
                     ),
                   ),
-                ),
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => RoomScreen(room: room),
+                );
+              }
+
+              if (sportsSnapshot.hasError || !sportsSnapshot.hasData) {
+                return const SizedBox.shrink();
+              }
+
+              final sports = sportsSnapshot.data!;
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: sports.map((sport) {
+                  return _buildSportSection(context, sport, sportsApiService);
+                }).toList(),
+              );
+            },
+          ),
+
+          const SizedBox(height: 32),
+
+          // Existing Rooms Section
+          const Text(
+            'Active Rooms',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          StreamBuilder<List<Room>>(
+            stream: firestoreService.getPublicRoomsStream(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: CircularProgressIndicator(
+                      color: Colors.redAccent,
+                    ),
+                  ),
+                );
+              }
+              if (snapshot.hasError) {
+                return Center(
+                  child: Text(
+                    'Error: ${snapshot.error}',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                );
+              }
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.1),
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'No public rooms available.\nGo to the "Room" tab to create one!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              final rooms = snapshot.data!;
+
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: rooms.length,
+                itemBuilder: (context, index) {
+                  final room = rooms[index];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFF1a1a2e),
+                          Color(0xFF16213e),
+                          Color(0xFF0f3460),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        width: 1,
+                      ),
+                    ),
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.all(16),
+                      leading: Container(
+                        width: 50,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.play_circle_outline,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                      title: Text(
+                        room.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      subtitle: Text(
+                        room.description ?? 'No description',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '${room.participants.length} 👤',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => RoomScreen(room: room),
+                          ),
+                        );
+                      },
                     ),
                   );
                 },
-              ),
-            );
-          },
-        );
-      },
+              );
+            },
+          ),
+        ],
+      ),
     );
+  }
+
+  Widget _buildSportSection(BuildContext context, Sport sport, SportsApiService apiService) {
+    // Get sport icon based on sport name
+    IconData sportIcon = _getSportIcon(sport.name);
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Sport Card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF1a1a2e),
+                  Color(0xFF16213e),
+                  Color(0xFF0f3460),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.1),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                // Sport Logo/Icon
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: sport.logoUrl != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            sport.logoUrl!,
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                sportIcon,
+                                color: Colors.redAccent,
+                                size: 32,
+                              );
+                            },
+                          ),
+                        )
+                      : Icon(
+                          sportIcon,
+                          color: Colors.redAccent,
+                          size: 32,
+                        ),
+                ),
+                const SizedBox(width: 16),
+                // Sport Name
+                Expanded(
+                  child: Text(
+                    sport.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          FutureBuilder<List<Team>>(
+            future: apiService.getTopTeamsBySport(sport.name, limit: 5),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(
+                  height: 120,
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.redAccent,
+                      strokeWidth: 2,
+                    ),
+                  ),
+                );
+              }
+
+              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Loading teams for ${sport.name}...',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              final teams = snapshot.data!;
+
+              return SizedBox(
+                height: 140,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: teams.length,
+                  itemBuilder: (context, index) {
+                    final team = teams[index];
+                    return Container(
+                      width: 160,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFF1a1a2e),
+                            Color(0xFF16213e),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.1),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (team.logoUrl != null)
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                team.logoUrl!,
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 60,
+                                    height: 60,
+                                    decoration: BoxDecoration(
+                                      color: Colors.redAccent.withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.sports,
+                                      color: Colors.redAccent,
+                                      size: 30,
+                                    ),
+                                  );
+                                },
+                              ),
+                            )
+                          else
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.sports,
+                                color: Colors.redAccent,
+                                size: 30,
+                              ),
+                            ),
+                          const SizedBox(height: 8),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Text(
+                              team.name,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (team.country != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                team.country!,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  fontSize: 11,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Get appropriate icon for each sport
+  IconData _getSportIcon(String sportName) {
+    switch (sportName.toLowerCase()) {
+      case 'football':
+        return Icons.sports_soccer;
+      case 'cricket':
+        return Icons.sports_cricket;
+      case 'basketball':
+        return Icons.sports_basketball;
+      case 'f1':
+        return Icons.speed;
+      case 'rugby':
+        return Icons.sports_rugby;
+      default:
+        return Icons.sports;
+    }
   }
 }

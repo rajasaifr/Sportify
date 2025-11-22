@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/theme/app_theme.dart';
 import 'package:sportify_app/widgets/floating_emitter.dart';
+import 'package:sportify_app/utils/logger.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -39,18 +40,56 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       if (_isSignup) {
+        Logger.debug('Starting signup process', tag: 'LoginScreen');
         final user = await authService.signUpWithEmail(
           email: email,
           password: password,
           displayName: name,
         );
-        if (user != null) _showSnackBar('Account created! Welcome.');
+        
+        if (user != null) {
+          Logger.info('Signup successful', tag: 'LoginScreen');
+          _showSnackBar('Account created! Welcome.');
+        } else {
+          Logger.warning('Signup returned null', tag: 'LoginScreen');
+          _showSnackBar('Failed to create account. Please try again.');
+        }
       } else {
-        await authService.signInWithEmail(email: email, password: password);
+        Logger.debug('Starting login process', tag: 'LoginScreen');
+        await authService.signInWithEmail(
+          email: email,
+          password: password,
+        );
+        Logger.info('Login successful', tag: 'LoginScreen');
       }
     } on FirebaseAuthException catch (e) {
-      _showSnackBar(e.message ?? 'Authentication failed.');
-    } catch (e) {
+      Logger.error('FirebaseAuthException: ${e.code}', error: e, tag: 'LoginScreen');
+      String message = 'An error occurred';
+      switch (e.code) {
+        case 'invalid-credential':
+        case 'invalid-login-credentials':
+        case 'user-not-found':
+        case 'wrong-password':
+          message = 'Invalid email or password. Please try again.';
+          break;
+        case 'email-already-in-use':
+          message = 'The account already exists for that email. Please sign in instead.';
+          break;
+        case 'invalid-email':
+          message = 'The email address is not valid.';
+          break;
+        case 'weak-password':
+          message = 'The password provided is too weak. Please use at least 6 characters.';
+          break;
+        case 'operation-not-allowed':
+          message = 'Email/password accounts are not enabled.';
+          break;
+        default:
+          message = e.message ?? 'Authentication failed. Please try again.';
+      }
+      _showSnackBar(message);
+    } catch (e, stackTrace) {
+      Logger.error('Unexpected error during ${_isSignup ? "signup" : "login"}', error: e, stackTrace: stackTrace, tag: 'LoginScreen');
       _showSnackBar('Error: ${e.toString()}');
     } finally {
       if (mounted) setState(() => _isEmailLoading = false);

@@ -19,7 +19,8 @@ dependencies:
   http: ^1.2.0
   
   # --- CRITICAL FIX: ADDING THE SVG PACKAGE ---
-  flutter_svg: ^2.0.10+1 
+  flutter_svg: ^2.0.10+1
+  flutter_inappwebview: ^5.8.0
 
 dev_dependencies:
   flutter_test:

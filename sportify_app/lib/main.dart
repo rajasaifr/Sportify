@@ -9,6 +9,7 @@ import 'package:sportify_app/services/interfaces/profile_service_interface.dart'
 
 // Screens
 import 'package:sportify_app/screens/auth_wrapper.dart';
+import 'package:sportify_app/utils/logger.dart';
 
 // Configuration & Theme
 import 'firebase_options.dart';
@@ -30,7 +31,17 @@ void main() async {
       providers: [
         // Dependencies registered as Interfaces (DIP)
         Provider<IAuthService>(
-          create: (_) => AuthService(),
+          create: (_) {
+            try {
+              return AuthService();
+            } catch (e) {
+              // If AuthService creation fails, still create it
+              // The lazy initialization will handle Google Sign-In errors
+              Logger.warning("AuthService creation had issues",
+                  error: e, tag: 'AuthService');
+              return AuthService();
+            }
+          },
         ),
         Provider<AuthService>(
           create: (_) => AuthService(),

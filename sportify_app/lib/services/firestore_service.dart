@@ -8,6 +8,7 @@ import 'package:sportify_app/services/interfaces/firestore_service_interface.dar
 import 'package:sportify_app/repositories/user_repository.dart';
 import 'package:sportify_app/repositories/room_repository.dart';
 import 'package:sportify_app/repositories/friendship_repository.dart';
+import 'package:sportify_app/utils/logger.dart';
 
 /// Firestore Service Implementation
 /// Applies Single Responsibility Principle (SRP) - coordinates between repositories
@@ -66,7 +67,7 @@ class FirestoreService implements IFirestoreService {
       await _roomRepository.createRoom(newRoom);
       return roomId;
     } catch (e) {
-      print("Error creating room: $e");
+      Logger.error("Error creating room", error: e, tag: 'FirestoreService');
       return null;
     }
   }
@@ -78,24 +79,96 @@ class FirestoreService implements IFirestoreService {
     return _roomRepository.getPublicRoomsStream();
   }
 
+  /// Gets a single room by its ID
+  Future<Room?> getRoomById(String roomId) async {
+    try {
+      return await _roomRepository.getRoomById(roomId);
+    } catch (e) {
+      Logger.error("Error fetching room by ID", error: e, tag: 'FirestoreService');
+      return null;
+    }
+  }
+
+  /// Updates an existing room
+  @override
+  Future<void> updateRoom(Room room) async {
+    try {
+      await _roomRepository.updateRoom(room);
+    } catch (e) {
+      Logger.error("Error updating room", error: e, tag: 'FirestoreService');
+      throw Exception('Failed to update room');
+    }
+  }
+
+  /// Deletes a room and all its messages
+  @override
+  Future<void> deleteRoom(String roomId) async {
+    try {
+      await _roomRepository.deleteRoom(roomId);
+    } catch (e) {
+      Logger.error("Error deleting room", error: e, tag: 'FirestoreService');
+      throw Exception('Failed to delete room');
+    }
+  }
+
   // --- Video Content Functions (UC-04) ---
+
+  /// Fetches a single video by contentId
+  Future<VideoContent?> getVideoById(String contentId) async {
+    try {
+      final doc = await _firestore.collection('videos').doc(contentId).get();
+      if (doc.exists) {
+        return VideoContent.fromJson({
+          ...doc.data()!,
+          'contentId': contentId,
+        });
+      }
+      return null;
+    } catch (e) {
+      Logger.error("Error fetching video by ID", error: e, tag: 'FirestoreService');
+      return null;
+    }
+  }
 
   /// Fetches a list of all available videos.
   /// Assumes videos are stored in a collection named 'videos'.
+  @override
   Future<List<VideoContent>> getAvailableVideos() async {
     try {
       // 1. Get all documents from the 'videos' collection
       QuerySnapshot snapshot = await _firestore.collection('videos').get();
 
       // 2. Map each document into a VideoContent object
-      List<VideoContent> videos = snapshot.docs.map((doc) {
-        // Use fromJson to convert the Map to our model
-        return VideoContent.fromJson(doc.data() as Map<String, dynamic>);
-      }).toList();
+      List<VideoContent> videos = [];
+      for (var doc in snapshot.docs) {
+        try {
+          final data = doc.data() as Map<String, dynamic>;
+          // Debug: Log document data
+          Logger.debug("Processing video document: ${doc.id}", tag: 'FirestoreService');
+          Logger.debug("Fields: ${data.keys.toList()}", tag: 'FirestoreService');
+          
+          // Check for common issues
+          if (!data.containsKey('contentId') && data.containsKey('contenId')) {
+            Logger.warning("Found typo: 'contenId' should be 'contentId'", tag: 'FirestoreService');
+          }
+          if (data['videoUrls'] is String) {
+            Logger.debug("videoUrls is a string, will convert to map", tag: 'FirestoreService');
+          }
+          if (data['thumbnailUrl'] is Map) {
+            Logger.debug("thumbnailUrl is a map, will extract youtube value", tag: 'FirestoreService');
+          }
+          
+          videos.add(VideoContent.fromJson(data));
+        } catch (e, stackTrace) {
+          Logger.error("Error parsing video document ${doc.id}", error: e, stackTrace: stackTrace, tag: 'FirestoreService');
+          // Continue with other documents
+        }
+      }
 
+      Logger.info("Successfully loaded ${videos.length} videos", tag: 'FirestoreService');
       return videos;
     } catch (e) {
-      print("Error fetching videos: $e"); // Use logger in production
+      Logger.error("Error fetching videos", error: e, tag: 'FirestoreService');
       return []; // Return an empty list on error
     }
   }
@@ -124,7 +197,7 @@ class FirestoreService implements IFirestoreService {
       // Use repository for data access (Abstraction)
       await _friendshipRepository.createFriendship(newRequest);
     } catch (e) {
-      print("Error sending friend request: $e");
+      Logger.error("Error sending friend request", error: e, tag: 'FirestoreService');
       rethrow;
     }
   }
@@ -165,8 +238,27 @@ class FirestoreService implements IFirestoreService {
           .doc(messageId)
           .set(newMessage.toJson());
     } catch (e) {
-      print("Error sending chat message: $e"); // Use logger
+      Logger.error("Error sending chat message", error: e, tag: 'FirestoreService');
     }
+  }
+
+  /// Gets a real-time stream of messages for a room
+  @override
+  Stream<List<Message>> getMessagesStream(String roomId) {
+    return _firestore
+        .collection('rooms')
+        .doc(roomId)
+        .collection('messages')
+        .orderBy('timestamp', descending: false)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return Message.fromJson({
+          ...doc.data(),
+          'messageId': doc.id,
+        });
+      }).toList();
+    });
   }
 
   @override
@@ -181,7 +273,7 @@ class FirestoreService implements IFirestoreService {
       // Use repository for data access (Abstraction)
       return await _userRepository.searchUsers(searchQuery);
     } catch (e) {
-      print("Error searching users: $e");
+      Logger.error("Error searching users", error: e, tag: 'FirestoreService');
       return [];
     }
   }
@@ -195,7 +287,7 @@ class FirestoreService implements IFirestoreService {
         FriendshipStatus.accepted,
       );
     } catch (e) {
-      print("Error accepting friend request: $e");
+      Logger.error("Error accepting friend request", error: e, tag: 'FirestoreService');
       throw Exception('Failed to accept friend request');
     }
   }
@@ -206,7 +298,7 @@ class FirestoreService implements IFirestoreService {
       // Use repository for data access (Abstraction)
       await _friendshipRepository.deleteFriendship(friendshipId);
     } catch (e) {
-      print("Error declining friend request: $e");
+      Logger.error("Error declining friend request", error: e, tag: 'FirestoreService');
       throw Exception('Failed to decline friend request');
     }
   }
@@ -223,7 +315,7 @@ class FirestoreService implements IFirestoreService {
       // Use repository for data access (Abstraction)
       return await _userRepository.getUserById(userId);
     } catch (e) {
-      print("Error getting user by ID: $e");
+      Logger.error("Error getting user by ID", error: e, tag: 'FirestoreService');
       return null;
     }
   }
@@ -236,7 +328,7 @@ class FirestoreService implements IFirestoreService {
       return await _friendshipRepository.getFriendshipBetweenUsers(
           user1Id, user2Id);
     } catch (e) {
-      print("Error checking friendship: $e");
+      Logger.error("Error checking friendship", error: e, tag: 'FirestoreService');
       return null;
     }
   }
@@ -249,7 +341,7 @@ class FirestoreService implements IFirestoreService {
           await getFriendshipBetweenUsers(currentUserId, otherUserId);
       return friendship?.status;
     } catch (e) {
-      print("Error getting friendship status: $e");
+      Logger.error("Error getting friendship status", error: e, tag: 'FirestoreService');
       return null;
     }
   }
@@ -260,7 +352,7 @@ class FirestoreService implements IFirestoreService {
       // Use repository for data access (Abstraction)
       await _friendshipRepository.deleteFriendship(friendshipId);
     } catch (e) {
-      print("Error deleting friendship: $e");
+      Logger.error("Error deleting friendship", error: e, tag: 'FirestoreService');
       throw Exception('Failed to delete friendship');
     }
   }

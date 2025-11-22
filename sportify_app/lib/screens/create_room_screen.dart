@@ -4,6 +4,7 @@ import 'package:sportify_app/models/room_model.dart';
 import 'package:sportify_app/models/video_content_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/firestore_service.dart';
+import 'package:sportify_app/screens/room_screen.dart';
 
 class CreateRoomScreen extends StatefulWidget {
   const CreateRoomScreen({super.key});
@@ -79,13 +80,24 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         contentId: _selectedVideo!.contentId,
         hostId: hostId,
         roomType: _selectedRoomType,
-        // TODO: Add fields for Rival Room
       );
 
       if (newRoomId != null) {
-        // 5. Success! Pop back to the HomeScreen
+        // 5. Fetch the created room and navigate to RoomScreen
         if (mounted) {
-          Navigator.of(context).pop();
+          final createdRoom = await firestoreService.getRoomById(newRoomId);
+          if (createdRoom != null && mounted) {
+            // Navigate to RoomScreen with the newly created room
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => RoomScreen(room: createdRoom),
+              ),
+            );
+          } else {
+            // If room fetch fails, just pop back
+            Navigator.of(context).pop();
+            _showErrorSnackBar('Room created but could not load it.');
+          }
         }
       } else {
         _showErrorSnackBar('Failed to create room.');
@@ -147,7 +159,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.blue.withOpacity(0.3),
+                    color: Colors.blue.withValues(alpha: 0.3),
                     blurRadius: 30,
                     offset: const Offset(0, 8),
                     spreadRadius: 2,
@@ -181,7 +193,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -190,16 +202,16 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
                             hintText: 'Enter room name',
-                            hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                            hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                             filled: true,
-                            fillColor: Colors.white.withOpacity(0.1),
+                            fillColor: Colors.white.withValues(alpha: 0.1),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
@@ -230,7 +242,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -239,16 +251,16 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
                             hintText: 'Enter description',
-                            hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                            hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                             filled: true,
-                            fillColor: Colors.white.withOpacity(0.1),
+                            fillColor: Colors.white.withValues(alpha: 0.1),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
@@ -273,7 +285,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -296,35 +308,36 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                               );
                             }
                             if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                              return Center(
+                              return const Center(
                                 child: Text(
                                   'No videos found in database. Please add a video to the "videos" collection.',
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(color: Colors.white),
+                                  style: TextStyle(color: Colors.white),
                                 ),
                               );
                             }
 
                             final videos = snapshot.data!;
                             return DropdownButtonFormField<VideoContent>(
+                              // ignore: deprecated_member_use
                               value: _selectedVideo,
                               hint: Text(
                                 'Select a video',
-                                style: TextStyle(color: Colors.white.withOpacity(0.5)),
+                                style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                               ),
                               isExpanded: true,
                               dropdownColor: containerGradient1,
                               style: const TextStyle(color: Colors.white),
                               decoration: InputDecoration(
                                 filled: true,
-                                fillColor: Colors.white.withOpacity(0.1),
+                                fillColor: Colors.white.withValues(alpha: 0.1),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
@@ -366,24 +379,25 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                           ),
                         ),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<RoomType>(
+                          // ignore: deprecated_member_use
                           value: _selectedRoomType,
                           dropdownColor: containerGradient1,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
                             filled: true,
-                            fillColor: Colors.white.withOpacity(0.1),
+                            fillColor: Colors.white.withValues(alpha: 0.1),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),

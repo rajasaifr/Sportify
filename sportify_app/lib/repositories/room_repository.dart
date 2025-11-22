@@ -13,7 +13,10 @@ class RoomRepository {
   /// Create a new room
   Future<String?> createRoom(Room room) async {
     try {
-      final roomDoc = _firestore.collection('rooms').doc();
+      // Use the roomId from the Room object if provided, otherwise generate a new one
+      final roomDoc = room.roomId.isNotEmpty
+          ? _firestore.collection('rooms').doc(room.roomId)
+          : _firestore.collection('rooms').doc();
       await roomDoc.set(room.toJson());
       return roomDoc.id;
     } catch (e) {
@@ -39,7 +42,10 @@ class RoomRepository {
     try {
       final doc = await _firestore.collection('rooms').doc(roomId).get();
       if (doc.exists) {
-        return Room.fromJson(doc.data() as Map<String, dynamic>);
+        final data = doc.data() as Map<String, dynamic>;
+        // Ensure roomId is set (use document ID if not in data)
+        data['roomId'] = data['roomId'] ?? doc.id;
+        return Room.fromJson(data);
       }
       return null;
     } catch (e) {
@@ -56,6 +62,32 @@ class RoomRepository {
           .set(room.toJson(), SetOptions(merge: true));
     } catch (e) {
       throw Exception('Failed to update room: $e');
+    }
+  }
+
+  /// Delete room
+  Future<void> deleteRoom(String roomId) async {
+    try {
+      // Delete the room document and all its subcollections (messages)
+      final batch = _firestore.batch();
+      
+      // Delete all messages in the room
+      final messagesSnapshot = await _firestore
+          .collection('rooms')
+          .doc(roomId)
+          .collection('messages')
+          .get();
+      
+      for (var doc in messagesSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      
+      // Delete the room document
+      batch.delete(_firestore.collection('rooms').doc(roomId));
+      
+      await batch.commit();
+    } catch (e) {
+      throw Exception('Failed to delete room: $e');
     }
   }
 }
