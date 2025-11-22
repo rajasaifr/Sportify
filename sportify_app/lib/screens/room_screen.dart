@@ -54,9 +54,22 @@ class _RoomScreenState extends State<RoomScreen> {
     
     if (currentUserId != null) {
       _isHost = currentUserId == _currentRoom.hostId;
-      _startPlaybackStateListener();
-      if (!_isHost) {
+      
+      // Check if host is in the room
+      final isHostInRoom = _currentRoom.participants.contains(_currentRoom.hostId);
+      
+      if (!isHostInRoom && !_isHost) {
+        // Host is not in room, disable video for members
+        Logger.warning("Host is not in room, video unavailable for members", tag: 'RoomScreen');
+        return;
+      }
+      
+      if (_isHost) {
+        // Host starts the update timer
         _startPlaybackUpdateTimer();
+      } else {
+        // Members listen to host's state
+        _startPlaybackStateListener();
       }
     }
   }
@@ -93,7 +106,9 @@ class _RoomScreenState extends State<RoomScreen> {
     // Update host's playback state every second (only if host)
     if (_isHost) {
       _playbackUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        _updateHostPlaybackState();
+        if (mounted) {
+          _updateHostPlaybackState();
+        }
       });
     }
   }
@@ -179,11 +194,14 @@ class _RoomScreenState extends State<RoomScreen> {
     if (!kIsWeb || _youtubeIframe == null) return;
     
     try {
-      // Send seek command via postMessage
-      _youtubeIframe!.contentWindow!.postMessage(
-        '{"event":"command","func":"seekTo","args":[$time, true]}',
-        '*',
-      );
+      // Ensure time is valid (non-negative)
+      final seekTime = time < 0 ? 0.0 : time;
+      
+      // Send seek command via postMessage with proper formatting
+      final seekCommand = '{"event":"command","func":"seekTo","args":[$seekTime, true]}';
+      _youtubeIframe!.contentWindow!.postMessage(seekCommand, '*');
+      
+      Logger.debug("Seeking to: $seekTime", tag: 'RoomScreen');
     } catch (e) {
       Logger.error("Error seeking video", error: e, tag: 'RoomScreen');
     }
@@ -202,20 +220,67 @@ class _RoomScreenState extends State<RoomScreen> {
   Future<void> _syncToHost() async {
     if (_isHost || _isSyncing) return;
     
+    // Check if host is still in room
+    final isHostInRoom = _currentRoom.participants.contains(_currentRoom.hostId);
+    if (!isHostInRoom) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Host is not in the room. Video unavailable.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+    
     setState(() => _isSyncing = true);
     
     try {
+      // First pause to prevent reload
+      await _pauseVideo();
+      
+      // Wait a bit for pause to take effect
+      await Future.delayed(const Duration(milliseconds: 300));
+      
+      // Then seek to host's time
       await _seekTo(_hostCurrentTime);
-      if (_hostIsPlaying && _isLocalPaused) {
+      
+      // Wait for seek to complete
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      // Resume if host is playing
+      if (_hostIsPlaying) {
         _isLocalPaused = false;
         await _resumeVideo();
-      } else if (!_hostIsPlaying && !_isLocalPaused) {
+      } else {
+        // Keep paused if host is paused
         await _pauseVideo();
+      }
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Synced to host'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 1),
+          ),
+        );
       }
     } catch (e) {
       Logger.error("Error syncing to host", error: e, tag: 'RoomScreen');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sync failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
-      setState(() => _isSyncing = false);
+      if (mounted) {
+        setState(() => _isSyncing = false);
+      }
     }
   }
 
@@ -427,6 +492,14 @@ class _RoomScreenState extends State<RoomScreen> {
         );
       }
     }
+  }
+
+  bool _checkHostPresence() {
+    // If current user is host, always allow
+    if (_isHost) return true;
+    
+    // Check if host is in participants list
+    return _currentRoom.participants.contains(_currentRoom.hostId);
   }
 
   void _loadYouTubeIFrameAPI() {
@@ -845,34 +918,55 @@ class _RoomScreenState extends State<RoomScreen> {
                               color: Colors.redAccent,
                             ),
                           )
-                        : _videoContent != null
-                            ? _videoId != null
-                                ? _buildVideoPlayer(_videoId!)
+                        : _checkHostPresence()
+                            ? _videoContent != null
+                                ? _videoId != null
+                                    ? _buildVideoPlayer(_videoId!)
+                                    : Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(
+                                              Icons.error_outline,
+                                              size: 48,
+                                              color: Colors.orange,
+                                            ),
+                                            const SizedBox(height: 16),
+                                            Text(
+                                              'Could not load video player',
+                                              style: TextStyle(
+                                                color: Colors.white.withValues(alpha: 0.7),
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'Video ID not found in: ${_videoContent!.videoUrls}',
+                                              style: TextStyle(
+                                                color: Colors.white.withValues(alpha: 0.5),
+                                                fontSize: 12,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ],
+                                        ),
+                                      )
                                 : Center(
                                     child: Column(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
                                         const Icon(
-                                          Icons.error_outline,
-                                          size: 48,
-                                          color: Colors.orange,
+                                          Icons.video_library_outlined,
+                                          size: 64,
+                                          color: Colors.white54,
                                         ),
                                         const SizedBox(height: 16),
                                         Text(
-                                          'Could not load video player',
+                                          'Video not found',
                                           style: TextStyle(
                                             color: Colors.white.withValues(alpha: 0.7),
-                                            fontSize: 16,
+                                            fontSize: 18,
                                           ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          'Video ID not found in: ${_videoContent!.videoUrls}',
-                                          style: TextStyle(
-                                            color: Colors.white.withValues(alpha: 0.5),
-                                            fontSize: 12,
-                                          ),
-                                          textAlign: TextAlign.center,
                                         ),
                                       ],
                                     ),
@@ -882,16 +976,25 @@ class _RoomScreenState extends State<RoomScreen> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     const Icon(
-                                      Icons.video_library_outlined,
+                                      Icons.person_off,
                                       size: 64,
-                                      color: Colors.white54,
+                                      color: Colors.orange,
                                     ),
                                     const SizedBox(height: 16),
+                                    const Text(
+                                      'Host is not in the room',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
                                     Text(
-                                      'Video not found',
+                                      'Video will be available when host joins',
                                       style: TextStyle(
                                         color: Colors.white.withValues(alpha: 0.7),
-                                        fontSize: 18,
+                                        fontSize: 14,
                                       ),
                                     ),
                                   ],
