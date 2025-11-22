@@ -6,7 +6,6 @@ import 'package:sportify_app/models/team_model.dart';
 import 'package:sportify_app/models/video_content_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/profile_service.dart';
-import 'package:sportify_app/services/sports_api_service.dart';
 import 'package:sportify_app/screens/create_room_screen.dart';
 import 'package:sportify_app/screens/profile_screen.dart';
 import 'package:sportify_app/screens/friends_screen.dart';
@@ -410,7 +409,6 @@ class _HomeScreenState extends State<HomeScreen>
     final authService = Provider.of<AuthService>(context);
     final profileService = Provider.of<ProfileService>(context);
     final currentUser = authService.currentUser;
-    final sportsApiService = SportsApiService();
 
     return Container(
       width: 250, // Fixed width to prevent overflow
@@ -558,7 +556,8 @@ class _HomeScreenState extends State<HomeScreen>
                         itemBuilder: (context, index) {
                           final teamName = favoriteTeams[index];
                           return FutureBuilder<Team?>(
-                            future: sportsApiService.getTeamByName(teamName),
+                            future: Provider.of<FirestoreService>(context, listen: false)
+                                .getTeamByName(teamName),
                             builder: (context, snapshot) {
                               final team = snapshot.data;
                               return Container(
@@ -653,7 +652,6 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildMainContentArea(BuildContext context) {
-    final sportsApiService = SportsApiService();
     final firestoreService = Provider.of<FirestoreService>(context);
 
     return Stack(
@@ -713,7 +711,8 @@ class _HomeScreenState extends State<HomeScreen>
 
               // Sports Sections (Horizontal Scrolling Rows)
               FutureBuilder<List<Sport>>(
-                future: sportsApiService.getTopSports(limit: 5),
+                future: Provider.of<FirestoreService>(context, listen: false)
+                    .getSports(limit: 5),
                 builder: (context, sportsSnapshot) {
                   if (sportsSnapshot.connectionState ==
                       ConnectionState.waiting) {
@@ -736,7 +735,7 @@ class _HomeScreenState extends State<HomeScreen>
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: sports.map((sport) {
-                      return _buildSportRow(context, sport, sportsApiService);
+                      return _buildSportRow(context, sport);
                     }).toList(),
                   );
                 },
@@ -995,8 +994,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildSportRow(
-      BuildContext context, Sport sport, SportsApiService apiService) {
+  Widget _buildSportRow(BuildContext context, Sport sport) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1024,7 +1022,8 @@ class _HomeScreenState extends State<HomeScreen>
         ),
         const SizedBox(height: 12),
         FutureBuilder<List<Team>>(
-          future: apiService.getTopTeamsBySport(sport.name, limit: 10),
+          future: Provider.of<FirestoreService>(context, listen: false)
+              .getTeamsBySport(sport.name, limit: 10),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const SizedBox(
