@@ -4,6 +4,7 @@ import 'package:sportify_app/models/room_model.dart';
 import 'package:sportify_app/models/video_content_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/firestore_service.dart';
+import 'package:sportify_app/screens/room_screen.dart';
 
 class CreateRoomScreen extends StatefulWidget {
   const CreateRoomScreen({super.key});
@@ -82,9 +83,21 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
       );
 
       if (newRoomId != null) {
-        // 5. Success! Pop back to the HomeScreen
+        // 5. Fetch the created room and navigate to RoomScreen
         if (mounted) {
-          Navigator.of(context).pop();
+          final createdRoom = await firestoreService.getRoomById(newRoomId);
+          if (createdRoom != null && mounted) {
+            // Navigate to RoomScreen with the newly created room
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (context) => RoomScreen(room: createdRoom),
+              ),
+            );
+          } else {
+            // If room fetch fails, just pop back
+            Navigator.of(context).pop();
+            _showErrorSnackBar('Room created but could not load it.');
+          }
         }
       } else {
         _showErrorSnackBar('Failed to create room.');
