@@ -278,7 +278,6 @@ class FirestoreService implements IFirestoreService {
     }
   }
 
-
   @override
   Future<void> acceptFriendRequest(String friendshipId) async {
     try {
@@ -322,10 +321,12 @@ class FirestoreService implements IFirestoreService {
   }
 
   @override
-  Future<Friendship?> getFriendshipBetweenUsers(String user1Id, String user2Id) async {
+  Future<Friendship?> getFriendshipBetweenUsers(
+      String user1Id, String user2Id) async {
     try {
       // Use repository for data access (Abstraction)
-      return await _friendshipRepository.getFriendshipBetweenUsers(user1Id, user2Id);
+      return await _friendshipRepository.getFriendshipBetweenUsers(
+          user1Id, user2Id);
     } catch (e) {
       Logger.error("Error checking friendship", error: e, tag: 'FirestoreService');
       return null;
@@ -333,9 +334,11 @@ class FirestoreService implements IFirestoreService {
   }
 
   @override
-  Future<FriendshipStatus?> getFriendshipStatus(String currentUserId, String otherUserId) async {
+  Future<FriendshipStatus?> getFriendshipStatus(
+      String currentUserId, String otherUserId) async {
     try {
-      final friendship = await getFriendshipBetweenUsers(currentUserId, otherUserId);
+      final friendship =
+          await getFriendshipBetweenUsers(currentUserId, otherUserId);
       return friendship?.status;
     } catch (e) {
       Logger.error("Error getting friendship status", error: e, tag: 'FirestoreService');
@@ -353,5 +356,4 @@ class FirestoreService implements IFirestoreService {
       throw Exception('Failed to delete friendship');
     }
   }
-
 }
