@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 /// Model for VideoContent, based on the Analysis Class Diagram.
 class VideoContent {
   final String contentId;
@@ -57,22 +59,49 @@ class VideoContent {
 
   /// Creates a VideoContent instance from a JSON Map.
   factory VideoContent.fromJson(Map<String, dynamic> json) {
+    // Handle typo: contenId -> contentId
+    final contentId = json['contentId'] ?? json['contenId'];
+    
+    // Handle thumbnailUrl being a map (extract youtube value if it's a map)
+    String thumbnailUrl;
+    if (json['thumbnailUrl'] is Map) {
+      final thumbMap = json['thumbnailUrl'] as Map;
+      thumbnailUrl = thumbMap['youtube']?.toString() ?? 
+                    'https://img.youtube.com/vi/$contentId/maxresdefault.jpg';
+    } else {
+      thumbnailUrl = json['thumbnailUrl']?.toString() ?? 
+                     'https://img.youtube.com/vi/$contentId/maxresdefault.jpg';
+    }
+    
+    // Handle videoUrls being a string (convert to map)
+    Map<String, String> videoUrls;
+    if (json['videoUrls'] is String) {
+      final urlString = json['videoUrls'] as String;
+      videoUrls = {'youtube': urlString.trim()};
+    } else if (json['videoUrls'] is Map) {
+      videoUrls = Map<String, String>.from(json['videoUrls']);
+    } else {
+      videoUrls = {};
+    }
+    
     return VideoContent(
-      contentId: json['contentId'],
-      title: json['title'],
-      description: json['description'],
-      duration: json['duration'],
+      contentId: contentId ?? '',
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      duration: json['duration'] ?? 0,
       uploadDate: json['uploadDate'] != null
-          ? DateTime.parse(json['uploadDate'])
+          ? (json['uploadDate'] is Timestamp
+              ? (json['uploadDate'] as Timestamp).toDate()
+              : DateTime.parse(json['uploadDate'].toString()))
           : null,
-      uploaderId: json['uploaderId'],
-      category: json['category'],
-      language: json['language'],
+      uploaderId: json['uploaderId'] ?? '',
+      category: json['category'] ?? '',
+      language: json['language'] ?? 'English',
       tags: List<String>.from(json['tags'] ?? []),
       teams: List<String>.from(json['teams'] ?? []),
-      thumbnailUrl: json['thumbnailUrl'],
+      thumbnailUrl: thumbnailUrl,
       averageRating: (json['averageRating'] as num?)?.toDouble() ?? 0.0,
-      videoUrls: Map<String, String>.from(json['videoUrls'] ?? {}),
+      videoUrls: videoUrls,
       detailViews: json['detailViews'] ?? 0,
       isFeatured: json['isFeatured'] ?? false,
     );
