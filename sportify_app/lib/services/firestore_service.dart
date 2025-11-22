@@ -13,7 +13,7 @@ import 'package:sportify_app/repositories/friendship_repository.dart';
 /// Applies Single Responsibility Principle (SRP) - coordinates between repositories
 /// Implements IFirestoreService interface - Dependency Inversion Principle (DIP)
 class FirestoreService implements IFirestoreService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
   final UserRepository _userRepository;
   final RoomRepository _roomRepository;
   final FriendshipRepository _friendshipRepository;
