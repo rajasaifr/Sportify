@@ -19,6 +19,7 @@ abstract class IFirestoreService {
   });
 
   Stream<List<Room>> getPublicRoomsStream();
+  Stream<List<Room>> getAllRoomsStream();
   Future<void> updateRoom(Room room);
   Future<void> deleteRoom(String roomId);
 

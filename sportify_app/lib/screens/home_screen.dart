@@ -3,16 +3,16 @@ import 'package:provider/provider.dart';
 import 'package:sportify_app/models/user_model.dart';
 import 'package:sportify_app/models/sport_model.dart';
 import 'package:sportify_app/models/team_model.dart';
+import 'package:sportify_app/models/room_model.dart';
 import 'package:sportify_app/models/video_content_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/profile_service.dart';
 import 'package:sportify_app/services/sports_api_service.dart';
+import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/screens/create_room_screen.dart';
 import 'package:sportify_app/screens/profile_screen.dart';
 import 'package:sportify_app/screens/friends_screen.dart';
 import 'package:sportify_app/screens/room_screen.dart';
-import 'package:sportify_app/services/firestore_service.dart';
-import 'package:sportify_app/models/room_model.dart';
 import 'package:sportify_app/theme/app_theme.dart';
 import 'package:sportify_app/widgets/neon_button.dart';
 import 'package:sportify_app/widgets/floating_emitter.dart';
@@ -27,10 +27,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  
+
   // Expose tab controller for external access (used by RoomScreen)
   TabController get tabController => _tabController;
-  
+
   bool _isSidebarOpen = true; // Sidebar state
   final ScrollController _scrollController =
       ScrollController(); // To preserve scroll position
@@ -241,8 +241,13 @@ class _HomeScreenState extends State<HomeScreen>
           offset: const Offset(0, 50),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: AppTheme.primary.withValues(alpha: 0.2),
+              width: 1,
+            ),
           ),
           color: AppTheme.inputFill,
+          elevation: 8,
           child: Container(
             width: 40,
             height: 40,
@@ -285,11 +290,14 @@ class _HomeScreenState extends State<HomeScreen>
               value: 'manage',
               child: Row(
                 children: [
-                  Icon(Icons.settings, color: AppTheme.textMain, size: 20),
+                  Icon(Icons.settings, color: AppTheme.primary, size: 20),
                   SizedBox(width: 12),
                   Text(
                     'Manage account',
-                    style: TextStyle(color: AppTheme.textMain),
+                    style: TextStyle(
+                      color: AppTheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -302,7 +310,10 @@ class _HomeScreenState extends State<HomeScreen>
                   SizedBox(width: 12),
                   Text(
                     'Sign out',
-                    style: TextStyle(color: Colors.redAccent),
+                    style: TextStyle(
+                      color: Colors.redAccent,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -803,7 +814,7 @@ class _HomeScreenState extends State<HomeScreen>
           builder: (context, videoSnapshot) {
             final video = videoSnapshot.data;
             final thumbnailUrl = video?.thumbnailUrl;
-            
+
             return Container(
               width: double.infinity,
               height: 400,
@@ -823,170 +834,165 @@ class _HomeScreenState extends State<HomeScreen>
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                  // Video Thumbnail Background
-                  if (thumbnailUrl != null && thumbnailUrl.isNotEmpty)
-                    Positioned.fill(
-                      child: Image.network(
-                        thumbnailUrl,
-                        fit: BoxFit.cover,
-                        alignment: Alignment.center,
-                        errorBuilder: (context, error, stackTrace) {
-                          // Fallback to gradient if image fails to load
-                          return Container(
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Color(0xFF1A0A2E),
-                                  AppTheme.bgStart,
-                                  AppTheme.bgEnd,
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          // Show gradient while loading
-                          return Container(
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Color(0xFF1A0A2E),
-                                  AppTheme.bgStart,
-                                  AppTheme.bgEnd,
-                                ],
-                              ),
-                            ),
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                value: loadingProgress.expectedTotalBytes != null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
-                                    : null,
-                                color: AppTheme.primary,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    )
-                  else
-                    // Fallback gradient if no thumbnail
-                    Positioned.fill(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Color(0xFF1A0A2E),
-                              AppTheme.bgStart,
-                              AppTheme.bgEnd,
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  // Gradient Overlay for text readability
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.7),
-                          Colors.black.withValues(alpha: 0.9),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Content Overlay
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: AppTheme.primary.withValues(alpha: 0.5),
-                        width: 2,
-                      ),
-                    ),
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        const Text(
-                          'FEATURED',
-                          style: TextStyle(
-                            color: AppTheme.primary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 2.0,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          featuredRoom.name,
-                          style: const TextStyle(
-                            color: AppTheme.textMain,
-                            fontSize: 32,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                        if (featuredRoom.description != null) ...[
-                          const SizedBox(height: 12),
-                          Text(
-                            featuredRoom.description!,
-                            style: const TextStyle(
-                              color: AppTheme.textFaint,
-                              fontSize: 14,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                        const SizedBox(height: 20),
-                        NeonButton(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    RoomScreen(room: featuredRoom),
+                    // Video Thumbnail Background
+                    if (thumbnailUrl != null && thumbnailUrl.isNotEmpty)
+                      Positioned.fill(
+                        child: Image.network(
+                          thumbnailUrl,
+                          fit: BoxFit.cover,
+                          alignment: Alignment.center,
+                          errorBuilder: (context, error, stackTrace) {
+                            // Fallback to gradient if image fails to load
+                            return Container(
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xFF1A0A2E),
+                                    AppTheme.bgStart,
+                                    AppTheme.bgEnd,
+                                  ],
+                                ),
                               ),
                             );
                           },
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 32,
-                            vertical: 14,
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.play_arrow, color: Colors.white),
-                              SizedBox(width: 8),
-                              Text(
-                                'JOIN ROOM',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                  letterSpacing: 1.0,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            // Show gradient while loading
+                            return Container(
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color(0xFF1A0A2E),
+                                    AppTheme.bgStart,
+                                    AppTheme.bgEnd,
+                                  ],
                                 ),
                               ),
-                            ],
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes != null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                          loadingProgress.expectedTotalBytes!
+                                      : null,
+                                  color: AppTheme.primary,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      )
+                    else
+                      // Fallback gradient if no thumbnail
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color(0xFF1A0A2E),
+                                AppTheme.bgStart,
+                                AppTheme.bgEnd,
+                              ],
+                            ),
                           ),
                         ),
-                      ],
+                      ),
+                    // Gradient Overlay for text readability
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.7),
+                            Colors.black.withValues(alpha: 0.9),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                    // Content Overlay
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: AppTheme.primary.withValues(alpha: 0.5),
+                          width: 2,
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          const Text(
+                            'FEATURED',
+                            style: TextStyle(
+                              color: AppTheme.primary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2.0,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            featuredRoom.name,
+                            style: const TextStyle(
+                              color: AppTheme.textMain,
+                              fontSize: 32,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                          if (featuredRoom.description != null) ...[
+                            const SizedBox(height: 12),
+                            Text(
+                              featuredRoom.description!,
+                              style: const TextStyle(
+                                color: AppTheme.textFaint,
+                                fontSize: 14,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                          const SizedBox(height: 20),
+                          NeonButton(
+                            onPressed: () {
+                              _navigateToRoomWithVerification(context, featuredRoom);
+                            },
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 32,
+                              vertical: 14,
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.play_arrow, color: Colors.white),
+                                SizedBox(width: 8),
+                                Text(
+                                  'JOIN ROOM',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    letterSpacing: 1.0,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -1180,6 +1186,139 @@ class _HomeScreenState extends State<HomeScreen>
         ),
       ),
     );
+  }
+
+  /// Shows a dialog to enter room code for private rooms
+  Future<bool> _showRoomCodeDialog(BuildContext context, Room room) async {
+    final codeController = TextEditingController();
+    bool? result = false;
+    
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppTheme.inputFill,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: AppTheme.primary.withValues(alpha: 0.5),
+              width: 1,
+            ),
+          ),
+          title: const Text(
+            'Private Room',
+            style: TextStyle(color: AppTheme.textMain, fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'This room requires an access code.',
+                style: TextStyle(color: AppTheme.textFaint),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: codeController,
+                style: const TextStyle(color: AppTheme.textMain),
+                decoration: InputDecoration(
+                  labelText: 'Enter Room Code',
+                  labelStyle: const TextStyle(color: AppTheme.textFaint),
+                  hintText: 'e.g., Cr23AB',
+                  hintStyle: TextStyle(color: AppTheme.textFaint.withValues(alpha: 0.5)),
+                  filled: true,
+                  fillColor: AppTheme.inputFill,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppTheme.primary.withValues(alpha: 0.3)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: AppTheme.primary.withValues(alpha: 0.3)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: AppTheme.primary, width: 2),
+                  ),
+                ),
+                textAlign: TextAlign.center,
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 6,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                result = false;
+              },
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: AppTheme.textFaint),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final enteredCode = codeController.text.trim().toUpperCase();
+                if (enteredCode == room.roomCode?.toUpperCase()) {
+                  Navigator.of(dialogContext).pop();
+                  result = true;
+                } else {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(
+                      content: Text('Invalid room code. Please try again.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+              ),
+              child: const Text('Join'),
+            ),
+          ],
+        );
+      },
+    );
+    
+    return result ?? false;
+  }
+
+  /// Navigates to room screen with code verification for private rooms
+  Future<void> _navigateToRoomWithVerification(BuildContext context, Room room) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final currentUserId = authService.currentUser?.uid;
+    
+    // If user is the host, allow direct access
+    if (currentUserId == room.hostId) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => RoomScreen(room: room),
+        ),
+      );
+      return;
+    }
+    
+    // If room is private, ask for code
+    if (room.roomType == RoomType.private) {
+      final hasAccess = await _showRoomCodeDialog(context, room);
+      if (hasAccess && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => RoomScreen(room: room),
+          ),
+        );
+      }
+    } else {
+      // Public room, allow direct access
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => RoomScreen(room: room),
+        ),
+      );
+    }
   }
 
   IconData _getSportIcon(String sportName) {

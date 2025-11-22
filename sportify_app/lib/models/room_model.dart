@@ -13,6 +13,7 @@ class Room {
   final DateTime? createdAt;
   final String hostId; // Links to UserModel
   final Map<String, dynamic>? privacySettings; // For private rooms
+  final String? roomCode; // Access code for private rooms (e.g., "Cr23AB")
 
   // Fields for RivalRoom
   final String? team1Name;
@@ -29,6 +30,7 @@ class Room {
     this.createdAt,
     required this.hostId,
     this.privacySettings,
+    this.roomCode,
     this.team1Name,
     this.team2Name,
     this.competitiveFeatures,
@@ -46,6 +48,7 @@ class Room {
       'createdAt': createdAt?.toIso8601String(),
       'hostId': hostId,
       'privacySettings': privacySettings,
+      'roomCode': roomCode,
       'team1Name': team1Name,
       'team2Name': team2Name,
       'competitiveFeatures': competitiveFeatures,
@@ -72,6 +75,7 @@ class Room {
       privacySettings: json['privacySettings'] != null
           ? Map<String, dynamic>.from(json['privacySettings'])
           : null,
+      roomCode: json['roomCode']?.toString(),
       team1Name: json['team1Name'],
       team2Name: json['team2Name'],
       competitiveFeatures: json['competitiveFeatures'],
