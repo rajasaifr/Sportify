@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:sportify_app/models/room_model.dart';
 import 'package:sportify_app/models/user_model.dart';
 import 'package:sportify_app/models/sport_model.dart';
 import 'package:sportify_app/models/team_model.dart';
-import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/profile_service.dart';
 import 'package:sportify_app/services/sports_api_service.dart';
 import 'package:sportify_app/screens/create_room_screen.dart';
-import 'package:sportify_app/screens/room_screen.dart';
 import 'package:sportify_app/screens/profile_screen.dart';
 import 'package:sportify_app/screens/friends_screen.dart';
 
@@ -23,6 +20,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  
+  // Expose tab controller for external access (used by RoomScreen)
+  TabController get tabController => _tabController;
 
   @override
   void initState() {
@@ -438,7 +438,6 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildMainContentArea(BuildContext context) {
-    final firestoreService = Provider.of<FirestoreService>(context);
     final sportsApiService = SportsApiService();
 
     return SingleChildScrollView(
@@ -472,144 +471,6 @@ class _HomeScreenState extends State<HomeScreen>
                 children: sports.map((sport) {
                   return _buildSportSection(context, sport, sportsApiService);
                 }).toList(),
-              );
-            },
-          ),
-
-          const SizedBox(height: 32),
-
-          // Existing Rooms Section
-          const Text(
-            'Active Rooms',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          StreamBuilder<List<Room>>(
-            stream: firestoreService.getPublicRoomsStream(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: CircularProgressIndicator(
-                      color: Colors.redAccent,
-                    ),
-                  ),
-                );
-              }
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    'Error: ${snapshot.error}',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                );
-              }
-              if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1),
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'No public rooms available.\nGo to the "Room" tab to create one!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ),
-                );
-              }
-
-              final rooms = snapshot.data!;
-
-              return ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: rooms.length,
-                itemBuilder: (context, index) {
-                  final room = rooms[index];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFF1a1a2e),
-                          Color(0xFF16213e),
-                          Color(0xFF0f3460),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        width: 1,
-                      ),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.all(16),
-                      leading: Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: Colors.redAccent.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.play_circle_outline,
-                          color: Colors.redAccent,
-                        ),
-                      ),
-                      title: Text(
-                        room.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      subtitle: Text(
-                        room.description ?? 'No description',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
-                        ),
-                      ),
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${room.participants.length} 👤',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => RoomScreen(room: room),
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                },
               );
             },
           ),

@@ -502,6 +502,17 @@ class _RoomScreenState extends State<RoomScreen> {
     return _currentRoom.participants.contains(_currentRoom.hostId);
   }
 
+  void _navigateBackToRooms() {
+    // Pop back to previous screen (should be CreateRoomScreen which is the Room tab)
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      // If we can't pop, navigate back to home
+      // This shouldn't happen in normal flow, but handle it gracefully
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
+  }
+
   void _loadYouTubeIFrameAPI() {
     if (kIsWeb && html.document.querySelector('#youtube-iframe-api') == null) {
       final script = html.ScriptElement()
@@ -881,6 +892,11 @@ class _RoomScreenState extends State<RoomScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF1a1a2e),
         elevation: 0,
+        automaticallyImplyLeading: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => _navigateBackToRooms(),
+        ),
         title: Text(
           _currentRoom.name,
           style: const TextStyle(color: Colors.white),
