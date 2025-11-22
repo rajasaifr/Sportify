@@ -81,6 +81,23 @@ class FirestoreService implements IFirestoreService {
 
   // --- Video Content Functions (UC-04) ---
 
+  /// Fetches a single video by contentId
+  Future<VideoContent?> getVideoById(String contentId) async {
+    try {
+      final doc = await _firestore.collection('videos').doc(contentId).get();
+      if (doc.exists) {
+        return VideoContent.fromJson({
+          ...doc.data()!,
+          'contentId': contentId,
+        });
+      }
+      return null;
+    } catch (e) {
+      Logger.error("Error fetching video by ID", error: e, tag: 'FirestoreService');
+      return null;
+    }
+  }
+
   /// Fetches a list of all available videos.
   /// Assumes videos are stored in a collection named 'videos'.
   @override
@@ -94,30 +111,29 @@ class FirestoreService implements IFirestoreService {
       for (var doc in snapshot.docs) {
         try {
           final data = doc.data() as Map<String, dynamic>;
-          // Debug: Print document data
-          print("📹 Processing video document: ${doc.id}");
-          print("   Fields: ${data.keys.toList()}");
+          // Debug: Log document data
+          Logger.debug("Processing video document: ${doc.id}", tag: 'FirestoreService');
+          Logger.debug("Fields: ${data.keys.toList()}", tag: 'FirestoreService');
           
           // Check for common issues
           if (!data.containsKey('contentId') && data.containsKey('contenId')) {
-            print("⚠️ Found typo: 'contenId' should be 'contentId'");
+            Logger.warning("Found typo: 'contenId' should be 'contentId'", tag: 'FirestoreService');
           }
           if (data['videoUrls'] is String) {
-            print("⚠️ videoUrls is a string, should be a map");
+            Logger.debug("videoUrls is a string, will convert to map", tag: 'FirestoreService');
           }
           if (data['thumbnailUrl'] is Map) {
-            print("⚠️ thumbnailUrl is a map, should be a string");
+            Logger.debug("thumbnailUrl is a map, will extract youtube value", tag: 'FirestoreService');
           }
           
           videos.add(VideoContent.fromJson(data));
         } catch (e, stackTrace) {
-          print("❌ Error parsing video document ${doc.id}: $e");
-          print("   Stack trace: $stackTrace");
+          Logger.error("Error parsing video document ${doc.id}", error: e, stackTrace: stackTrace, tag: 'FirestoreService');
           // Continue with other documents
         }
       }
 
-      print("✅ Successfully loaded ${videos.length} videos");
+      Logger.info("Successfully loaded ${videos.length} videos", tag: 'FirestoreService');
       return videos;
     } catch (e) {
       Logger.error("Error fetching videos", error: e, tag: 'FirestoreService');
@@ -192,6 +208,25 @@ class FirestoreService implements IFirestoreService {
     } catch (e) {
       Logger.error("Error sending chat message", error: e, tag: 'FirestoreService');
     }
+  }
+
+  /// Gets a real-time stream of messages for a room
+  @override
+  Stream<List<Message>> getMessagesStream(String roomId) {
+    return _firestore
+        .collection('rooms')
+        .doc(roomId)
+        .collection('messages')
+        .orderBy('timestamp', descending: false)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs.map((doc) {
+        return Message.fromJson({
+          ...doc.data(),
+          'messageId': doc.id,
+        });
+      }).toList();
+    });
   }
   
   @override
