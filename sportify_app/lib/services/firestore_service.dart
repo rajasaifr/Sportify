@@ -4,6 +4,7 @@ import 'package:sportify_app/models/video_content_model.dart';
 import 'package:sportify_app/models/user_model.dart';
 import 'package:sportify_app/models/friendship_model.dart';
 import 'package:sportify_app/models/message_model.dart';
+import 'package:sportify_app/models/playback_state_model.dart';
 import 'package:sportify_app/services/interfaces/firestore_service_interface.dart';
 import 'package:sportify_app/repositories/user_repository.dart';
 import 'package:sportify_app/repositories/room_repository.dart';
@@ -114,15 +115,57 @@ class FirestoreService implements IFirestoreService {
   // --- Video Content Functions (UC-04) ---
 
   /// Fetches a single video by contentId
+  /// First tries to find by document ID, then queries by contentId field if not found
   Future<VideoContent?> getVideoById(String contentId) async {
     try {
+      // First, try to get by document ID (most common case)
       final doc = await _firestore.collection('videos').doc(contentId).get();
       if (doc.exists) {
+        Logger.debug("Video found by document ID: $contentId", tag: 'FirestoreService');
+        final data = doc.data()!;
+        // Ensure contentId is set correctly
         return VideoContent.fromJson({
-          ...doc.data()!,
-          'contentId': contentId,
+          ...data,
+          'contentId': data['contentId'] ?? data['contenId'] ?? contentId,
         });
       }
+      
+      // If not found by document ID, query by contentId field
+      Logger.debug("Video not found by document ID, querying by contentId field: $contentId", tag: 'FirestoreService');
+      final querySnapshot = await _firestore
+          .collection('videos')
+          .where('contentId', isEqualTo: contentId)
+          .limit(1)
+          .get();
+      
+      if (querySnapshot.docs.isNotEmpty) {
+        Logger.debug("Video found by contentId field query", tag: 'FirestoreService');
+        final doc = querySnapshot.docs.first;
+        final data = doc.data();
+        return VideoContent.fromJson({
+          ...data,
+          'contentId': data['contentId'] ?? data['contenId'] ?? contentId,
+        });
+      }
+      
+      // Also try with the typo 'contenId' field
+      final typoQuerySnapshot = await _firestore
+          .collection('videos')
+          .where('contenId', isEqualTo: contentId)
+          .limit(1)
+          .get();
+      
+      if (typoQuerySnapshot.docs.isNotEmpty) {
+        Logger.debug("Video found by contenId (typo) field query", tag: 'FirestoreService');
+        final doc = typoQuerySnapshot.docs.first;
+        final data = doc.data();
+        return VideoContent.fromJson({
+          ...data,
+          'contentId': data['contentId'] ?? data['contenId'] ?? contentId,
+        });
+      }
+      
+      Logger.warning("Video not found with contentId: $contentId", tag: 'FirestoreService');
       return null;
     } catch (e) {
       Logger.error("Error fetching video by ID", error: e, tag: 'FirestoreService');
@@ -355,5 +398,68 @@ class FirestoreService implements IFirestoreService {
       Logger.error("Error deleting friendship", error: e, tag: 'FirestoreService');
       throw Exception('Failed to delete friendship');
     }
+  }
+
+  // --- Playback State Functions (Video Synchronization) ---
+
+  /// Updates the playback state for a user in a room
+  Future<void> updatePlaybackState({
+    required String roomId,
+    required String userId,
+    required bool isPlaying,
+    required double currentTime,
+    required bool isHost,
+  }) async {
+    try {
+      final playbackState = PlaybackState(
+        roomId: roomId,
+        userId: userId,
+        isPlaying: isPlaying,
+        currentTime: currentTime,
+        lastUpdated: DateTime.now(),
+        isHost: isHost,
+      );
+
+      await _firestore
+          .collection('rooms')
+          .doc(roomId)
+          .collection('playbackStates')
+          .doc(userId)
+          .set(playbackState.toJson(), SetOptions(merge: true));
+    } catch (e) {
+      Logger.error("Error updating playback state", error: e, tag: 'FirestoreService');
+    }
+  }
+
+  /// Gets the host's playback state for a room
+  Stream<PlaybackState?> getHostPlaybackStateStream(String roomId, String hostId) {
+    return _firestore
+        .collection('rooms')
+        .doc(roomId)
+        .collection('playbackStates')
+        .doc(hostId)
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.exists && snapshot.data() != null) {
+        return PlaybackState.fromJson(snapshot.data()!);
+      }
+      return null;
+    });
+  }
+
+  /// Gets a user's playback state
+  Stream<PlaybackState?> getUserPlaybackStateStream(String roomId, String userId) {
+    return _firestore
+        .collection('rooms')
+        .doc(roomId)
+        .collection('playbackStates')
+        .doc(userId)
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.exists && snapshot.data() != null) {
+        return PlaybackState.fromJson(snapshot.data()!);
+      }
+      return null;
+    });
   }
 }

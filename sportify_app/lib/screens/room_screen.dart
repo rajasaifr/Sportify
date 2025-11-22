@@ -5,12 +5,14 @@ import 'package:sportify_app/models/room_model.dart';
 import 'package:sportify_app/models/video_content_model.dart';
 import 'package:sportify_app/models/message_model.dart';
 import 'package:sportify_app/models/user_model.dart';
+import 'package:sportify_app/models/playback_state_model.dart';
 import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/utils/logger.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'dart:html' as html;
 import 'dart:ui_web' as ui_web;
+import 'dart:async';
 
 class RoomScreen extends StatefulWidget {
   final Room room;
@@ -28,10 +30,227 @@ class _RoomScreenState extends State<RoomScreen> {
   String? _videoId;
   late Room _currentRoom = widget.room;
 
+  // Video synchronization state
+  bool _isHost = false;
+  bool _isLocalPaused = false; // Member's local pause state
+  double _localPauseTime = 0.0; // Time when member paused
+  double _hostCurrentTime = 0.0;
+  bool _hostIsPlaying = false;
+  StreamSubscription<PlaybackState?>? _hostStateSubscription;
+  Timer? _playbackUpdateTimer;
+  html.IFrameElement? _youtubeIframe;
+  bool _isSyncing = false;
+
   @override
   void initState() {
     super.initState();
     _loadVideoContent();
+    _initializeSynchronization();
+  }
+
+  void _initializeSynchronization() {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final currentUserId = authService.currentUser?.uid;
+    
+    if (currentUserId != null) {
+      _isHost = currentUserId == _currentRoom.hostId;
+      _startPlaybackStateListener();
+      if (!_isHost) {
+        _startPlaybackUpdateTimer();
+      }
+    }
+  }
+
+  void _startPlaybackStateListener() {
+    final firestoreService = Provider.of<FirestoreService>(context, listen: false);
+    _hostStateSubscription = firestoreService
+        .getHostPlaybackStateStream(_currentRoom.roomId, _currentRoom.hostId)
+        .listen((hostState) {
+      if (hostState != null && mounted && !_isHost) {
+        setState(() {
+          _hostCurrentTime = hostState.currentTime;
+          _hostIsPlaying = hostState.isPlaying;
+        });
+        
+        // If host paused, pause all members
+        if (!hostState.isPlaying && !_isLocalPaused) {
+          _pauseVideo();
+        }
+        // If host resumed and member is not locally paused, resume
+        else if (hostState.isPlaying && !_isLocalPaused) {
+          _resumeVideo();
+        }
+        
+        // Prevent members from going beyond host's current time
+        if (!_isLocalPaused) {
+          _enforceHostTimeLimit();
+        }
+      }
+    });
+  }
+
+  void _startPlaybackUpdateTimer() {
+    // Update host's playback state every second (only if host)
+    if (_isHost) {
+      _playbackUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        _updateHostPlaybackState();
+      });
+    }
+  }
+
+  Future<void> _updateHostPlaybackState() async {
+    if (!_isHost || _youtubeIframe == null || _isSyncing) return;
+    
+    try {
+      // For host, we'll track time locally and update Firestore
+      // In a production app, you'd use YouTube IFrame API properly to get actual playback state
+      final firestoreService = Provider.of<FirestoreService>(context, listen: false);
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final currentUserId = authService.currentUser?.uid;
+      
+      if (currentUserId != null) {
+        // Update host state - in production, get actual time from YouTube API
+        await firestoreService.updatePlaybackState(
+          roomId: _currentRoom.roomId,
+          userId: currentUserId,
+          isPlaying: !_isLocalPaused, // Host is playing if not locally paused
+          currentTime: _hostCurrentTime,
+          isHost: true,
+        );
+      }
+    } catch (e) {
+      Logger.error("Error updating host playback state", error: e, tag: 'RoomScreen');
+    }
+  }
+
+  Future<double?> _getCurrentTime() async {
+    if (!kIsWeb || _youtubeIframe == null) return null;
+    
+    try {
+      // Use postMessage to communicate with YouTube IFrame
+      // Note: This is a simplified approach - in production, you'd use YouTube IFrame API properly
+      // For now, we'll track time locally and update from host state
+      return _hostCurrentTime;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<bool?> _isVideoPlaying() async {
+    if (!kIsWeb || _youtubeIframe == null) return null;
+    
+    try {
+      // Return host's playing state for synchronization
+      return _hostIsPlaying && !_isLocalPaused;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Future<void> _pauseVideo() async {
+    if (!kIsWeb || _youtubeIframe == null) return;
+    
+    try {
+      // Send pause command via postMessage
+      _youtubeIframe!.contentWindow!.postMessage(
+        '{"event":"command","func":"pauseVideo","args":""}',
+        '*',
+      );
+    } catch (e) {
+      Logger.error("Error pausing video", error: e, tag: 'RoomScreen');
+    }
+  }
+
+  Future<void> _resumeVideo() async {
+    if (!kIsWeb || _youtubeIframe == null) return;
+    
+    try {
+      // Send play command via postMessage
+      _youtubeIframe!.contentWindow!.postMessage(
+        '{"event":"command","func":"playVideo","args":""}',
+        '*',
+      );
+    } catch (e) {
+      Logger.error("Error resuming video", error: e, tag: 'RoomScreen');
+    }
+  }
+
+  Future<void> _seekTo(double time) async {
+    if (!kIsWeb || _youtubeIframe == null) return;
+    
+    try {
+      // Send seek command via postMessage
+      _youtubeIframe!.contentWindow!.postMessage(
+        '{"event":"command","func":"seekTo","args":[$time, true]}',
+        '*',
+      );
+    } catch (e) {
+      Logger.error("Error seeking video", error: e, tag: 'RoomScreen');
+    }
+  }
+
+  void _enforceHostTimeLimit() async {
+    if (_isHost || _isLocalPaused) return;
+    
+    final currentTime = await _getCurrentTime();
+    if (currentTime != null && currentTime > _hostCurrentTime + 1.0) {
+      // Member is ahead of host, seek back to host's time
+      await _seekTo(_hostCurrentTime);
+    }
+  }
+
+  Future<void> _syncToHost() async {
+    if (_isHost || _isSyncing) return;
+    
+    setState(() => _isSyncing = true);
+    
+    try {
+      await _seekTo(_hostCurrentTime);
+      if (_hostIsPlaying && _isLocalPaused) {
+        _isLocalPaused = false;
+        await _resumeVideo();
+      } else if (!_hostIsPlaying && !_isLocalPaused) {
+        await _pauseVideo();
+      }
+    } catch (e) {
+      Logger.error("Error syncing to host", error: e, tag: 'RoomScreen');
+    } finally {
+      setState(() => _isSyncing = false);
+    }
+  }
+
+  Future<void> _handleMemberPause() async {
+    if (_isHost) return; // Host controls affect everyone, handled separately
+    
+    final currentTime = await _getCurrentTime();
+    if (currentTime != null) {
+      setState(() {
+        _isLocalPaused = true;
+        _localPauseTime = currentTime;
+      });
+      await _pauseVideo();
+    }
+  }
+
+  Future<void> _handleMemberResume() async {
+    if (_isHost) return;
+    
+    if (_isLocalPaused) {
+      // Resume from where member paused
+      await _seekTo(_localPauseTime);
+      await _resumeVideo();
+      setState(() {
+        _isLocalPaused = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _hostStateSubscription?.cancel();
+    _playbackUpdateTimer?.cancel();
+    _messageController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadVideoContent() async {
@@ -45,34 +264,37 @@ class _RoomScreenState extends State<RoomScreen> {
       final video = await firestoreService.getVideoById(_currentRoom.contentId);
       
       if (video != null && mounted) {
-        Logger.info("Video found: ${video.title}, videoUrls: ${video.videoUrls}", tag: 'RoomScreen');
+        Logger.info("Video found: ${video.title}, videoUrls: ${video.videoUrls}, contentId: ${video.contentId}", tag: 'RoomScreen');
         
         // Extract YouTube video ID from videoUrls
         String? videoId = _extractYouTubeVideoId(video.videoUrls);
         
         Logger.debug("Extracted video ID from videoUrls: $videoId", tag: 'RoomScreen');
         
-        // If extraction failed, try using contentId directly if it looks like a YouTube ID
-        if (videoId == null) {
-          videoId = _tryContentIdAsVideoId(_currentRoom.contentId);
-          Logger.debug("Trying contentId as video ID: $videoId", tag: 'RoomScreen');
+        // If extraction failed, try using video's contentId directly if it looks like a YouTube ID
+        if (videoId == null && video.contentId.isNotEmpty) {
+          videoId = _tryContentIdAsVideoId(video.contentId);
+          Logger.debug("Trying video.contentId as video ID: $videoId", tag: 'RoomScreen');
         }
         
-        if (videoId != null && mounted) {
-          Logger.info("Using video ID: $videoId", tag: 'RoomScreen');
+        // If still null, try using room's contentId
+        if (videoId == null) {
+          videoId = _tryContentIdAsVideoId(_currentRoom.contentId);
+          Logger.debug("Trying room.contentId as video ID: $videoId", tag: 'RoomScreen');
+        }
+        
+        // Set video content regardless of videoId (so we can show video info)
+        if (mounted) {
           setState(() {
             _videoContent = video;
-            _videoId = videoId;
+            _videoId = videoId; // Can be null, but we'll handle that in UI
             _isLoadingVideo = false;
           });
-        } else {
-          // Log for debugging
-          Logger.warning("Could not extract video ID. videoUrls: ${video.videoUrls}, contentId: ${_currentRoom.contentId}", tag: 'RoomScreen');
-          if (mounted) {
-            setState(() {
-              _videoContent = video;
-              _isLoadingVideo = false;
-            });
+          
+          if (videoId != null) {
+            Logger.info("Using video ID: $videoId", tag: 'RoomScreen');
+          } else {
+            Logger.warning("Could not extract video ID. videoUrls: ${video.videoUrls}, video.contentId: ${video.contentId}, room.contentId: ${_currentRoom.contentId}", tag: 'RoomScreen');
           }
         }
       } else {
@@ -122,12 +344,22 @@ class _RoomScreenState extends State<RoomScreen> {
       return null;
     }
     
+    Logger.debug("Extracting YouTube video ID from videoUrls: $videoUrls", tag: 'RoomScreen');
+    
     // Try to find YouTube URL in videoUrls
     for (var entry in videoUrls.entries) {
       final key = entry.key.toLowerCase();
-      final url = entry.value;
+      final url = entry.value.trim();
+      
+      if (url.isEmpty) continue;
       
       Logger.debug("Checking videoUrl[$key]: $url", tag: 'RoomScreen');
+      
+      // First check if it's already a video ID (11 characters, alphanumeric)
+      if (url.length == 11 && RegExp(r'^[a-zA-Z0-9_-]{11}$').hasMatch(url)) {
+        Logger.info("URL is already a YouTube video ID: $url", tag: 'RoomScreen');
+        return url;
+      }
       
       // Check if key contains 'youtube' or 'youtu'
       if (key.contains('youtube') || key.contains('youtu')) {
@@ -141,43 +373,34 @@ class _RoomScreenState extends State<RoomScreen> {
           Logger.info("Extracted YouTube video ID from URL: $videoId", tag: 'RoomScreen');
           return videoId;
         }
-        
-        // If it's already a video ID (11 characters, alphanumeric)
-        if (url.length == 11 && RegExp(r'^[a-zA-Z0-9_-]{11}$').hasMatch(url)) {
-          Logger.info("URL is already a YouTube video ID: $url", tag: 'RoomScreen');
-          return url;
-        }
       }
     }
     
     // Try all URLs regardless of key
     for (var url in videoUrls.values) {
+      final trimmedUrl = url.trim();
+      if (trimmedUrl.isEmpty) continue;
+      
+      // First check if it's already a video ID
+      if (trimmedUrl.length == 11 && RegExp(r'^[a-zA-Z0-9_-]{11}$').hasMatch(trimmedUrl)) {
+        Logger.info("URL is already a YouTube video ID: $trimmedUrl", tag: 'RoomScreen');
+        return trimmedUrl;
+      }
+      
       // Extract video ID from various YouTube URL formats
       final regex = RegExp(
         r'(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})',
       );
-      final match = regex.firstMatch(url);
+      final match = regex.firstMatch(trimmedUrl);
       if (match != null) {
         final videoId = match.group(1);
         Logger.info("Extracted YouTube video ID from any URL: $videoId", tag: 'RoomScreen');
         return videoId;
       }
-      
-      // If it's already a video ID (11 characters)
-      if (url.length == 11 && RegExp(r'^[a-zA-Z0-9_-]{11}$').hasMatch(url)) {
-        Logger.info("URL is already a YouTube video ID: $url", tag: 'RoomScreen');
-        return url;
-      }
     }
     
     Logger.warning("Could not extract YouTube video ID from videoUrls: $videoUrls", tag: 'RoomScreen');
     return null;
-  }
-
-  @override
-  void dispose() {
-    _messageController.dispose();
-    super.dispose();
   }
 
   Future<void> _sendMessage() async {
@@ -206,10 +429,27 @@ class _RoomScreenState extends State<RoomScreen> {
     }
   }
 
-  bool get _isHost {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final currentUserId = authService.currentUser?.uid;
-    return currentUserId != null && currentUserId == _currentRoom.hostId;
+  void _loadYouTubeIFrameAPI() {
+    if (kIsWeb && html.document.querySelector('#youtube-iframe-api') == null) {
+      final script = html.ScriptElement()
+        ..id = 'youtube-iframe-api'
+        ..src = 'https://www.youtube.com/iframe_api'
+        ..async = true;
+      html.document.head!.append(script);
+    }
+  }
+
+  void _setupYouTubePlayerEvents(html.IFrameElement iframe) {
+    if (!kIsWeb) return;
+    
+    // Wait for YouTube API to be ready
+    Timer(const Duration(milliseconds: 500), () {
+      try {
+        iframe.contentWindow!.postMessage('{"event":"command","func":"addEventListener","args":["onStateChange"]}', '*');
+      } catch (e) {
+        Logger.error("Error setting up YouTube player events", error: e, tag: 'RoomScreen');
+      }
+    });
   }
 
   Future<void> _showEditRoomDialog() async {
@@ -590,34 +830,87 @@ class _RoomScreenState extends State<RoomScreen> {
       ),
       body: Row(
         children: [
-          // Left Side - Video Player
+          // Left Side - Video Player and Info
           Expanded(
             flex: 2,
-            child: Container(
-              color: Colors.black,
-              child: _isLoadingVideo
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        color: Colors.redAccent,
-                      ),
-                    )
-                  : _videoContent != null
-                      ? Column(
-                          children: [
-                            // Video Player
-                            Expanded(
-                              child: _videoId != null
-                                  ? _buildVideoPlayer(_videoId!)
-                                  : const Center(
-                                      child: CircularProgressIndicator(
-                                        color: Colors.redAccent,
+            child: Column(
+              children: [
+                // Video Player
+                Expanded(
+                  child: Container(
+                    color: Colors.black,
+                    child: _isLoadingVideo
+                        ? const Center(
+                            child: CircularProgressIndicator(
+                              color: Colors.redAccent,
+                            ),
+                          )
+                        : _videoContent != null
+                            ? _videoId != null
+                                ? _buildVideoPlayer(_videoId!)
+                                : Center(
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(
+                                          Icons.error_outline,
+                                          size: 48,
+                                          color: Colors.orange,
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Text(
+                                          'Could not load video player',
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(alpha: 0.7),
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Video ID not found in: ${_videoContent!.videoUrls}',
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(alpha: 0.5),
+                                            fontSize: 12,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                            : Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(
+                                      Icons.video_library_outlined,
+                                      size: 64,
+                                      color: Colors.white54,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Video not found',
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.7),
+                                        fontSize: 18,
                                       ),
                                     ),
-                            ),
-                            // Video Info
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              color: const Color(0xFF1a1a2e),
+                                  ],
+                                ),
+                              ),
+                  ),
+                ),
+                // Video Info - Full width below video player
+                if (_videoContent != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    color: const Color(0xFF1a1a2e),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -629,8 +922,8 @@ class _RoomScreenState extends State<RoomScreen> {
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
-                                  const SizedBox(height: 8),
-                                  if (_videoContent!.description.isNotEmpty)
+                                  if (_videoContent!.description.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
                                     Text(
                                       _videoContent!.description,
                                       style: TextStyle(
@@ -640,31 +933,46 @@ class _RoomScreenState extends State<RoomScreen> {
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
+                                  ],
                                 ],
                               ),
                             ),
-                          ],
-                        )
-                      : Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.video_library_outlined,
-                                size: 64,
-                                color: Colors.white54,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Video not found',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.7),
-                                  fontSize: 18,
+                            // Sync Now button for members
+                            if (!_isHost)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 16),
+                                child: ElevatedButton.icon(
+                                  onPressed: _isSyncing ? null : _syncToHost,
+                                  icon: _isSyncing
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Icon(Icons.sync, size: 18),
+                                  label: const Text('SYNC NOW'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF6C5CE7),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ],
-                          ),
+                          ],
                         ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
           ),
 
@@ -1010,7 +1318,18 @@ class _RoomScreenState extends State<RoomScreen> {
   }
 
   Widget _buildVideoPlayer(String videoId) {
-    final embedUrl = 'https://www.youtube.com/embed/$videoId?autoplay=1&controls=1&rel=0&modestbranding=1';
+    // YouTube embed parameters to disable related videos and suggestions
+    // rel=0: Don't show related videos from other channels (most important for preventing "More videos")
+    // modestbranding=1: Reduce YouTube branding
+    // showinfo=0: Don't show video info overlay (deprecated but helps)
+    // iv_load_policy=3: Disable annotations
+    // fs=1: Allow fullscreen
+    // playsinline=1: Play inline on mobile
+    // loop=0: Don't loop video
+    // mute=0: Allow sound
+    final origin = kIsWeb ? (Uri.base.hasScheme ? Uri.base.origin : '') : '';
+    final originParam = origin.isNotEmpty ? '&origin=$origin' : '';
+    final embedUrl = 'https://www.youtube.com/embed/$videoId?autoplay=1&controls=1&rel=0&modestbranding=1&showinfo=0&iv_load_policy=3&fs=1&playsinline=1&loop=0&mute=0$originParam';
 
     if (kIsWeb) {
       // Use HTML iframe for web
@@ -1043,15 +1362,26 @@ class _RoomScreenState extends State<RoomScreen> {
     
     // Check if already registered, if so, use a different ID
     try {
+      // Load YouTube IFrame API script
+      _loadYouTubeIFrameAPI();
+      
       // Register the iframe
       html.IFrameElement iframe = html.IFrameElement()
-        ..src = embedUrl
+        ..src = embedUrl.replaceFirst('?', '?enablejsapi=1&')
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'
         ..style.display = 'block'
         ..allowFullscreen = true
         ..allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+      
+      // Store reference for API calls
+      _youtubeIframe = iframe;
+      
+      // Set up event listeners for playback state tracking
+      iframe.onLoad.listen((_) {
+        _setupYouTubePlayerEvents(iframe);
+      });
 
       // Register the platform view
       ui_web.platformViewRegistry.registerViewFactory(
