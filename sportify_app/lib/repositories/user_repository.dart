@@ -2,8 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sportify_app/models/user_model.dart';
 
 /// Repository pattern for user data access
-/// Applies Single Responsibility Principle (SRP) - handles only user data operations
-/// Applies Abstraction - abstracts data access details
 class UserRepository {
   final FirebaseFirestore _firestore;
 
@@ -25,11 +23,7 @@ class UserRepository {
 
   /// Get user stream (real-time updates)
   Stream<UserModel?> getUserStream(String uid) {
-    return _firestore
-        .collection('users')
-        .doc(uid)
-        .snapshots()
-        .map((snapshot) {
+    return _firestore.collection('users').doc(uid).snapshots().map((snapshot) {
       if (snapshot.exists) {
         return UserModel.fromJson(snapshot.data() as Map<String, dynamic>);
       }
@@ -40,10 +34,7 @@ class UserRepository {
   /// Create user document
   Future<void> createUser(UserModel user) async {
     try {
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .set(user.toJson());
+      await _firestore.collection('users').doc(user.uid).set(user.toJson());
     } catch (e) {
       throw Exception('Failed to create user: $e');
     }
@@ -73,25 +64,23 @@ class UserRepository {
     }
   }
 
-  /// Search users by display name or email
+  /// Search users by display name or email (Simulated search)
   Future<List<UserModel>> searchUsers(String query) async {
     try {
       if (query.isEmpty) return [];
 
       final snapshot = await _firestore.collection('users').get();
-      
+
       return snapshot.docs
           .map((doc) => UserModel.fromJson(doc.data()))
           .where((user) {
-            final displayName = user.displayName?.toLowerCase() ?? '';
-            final email = user.email.toLowerCase();
-            final searchQuery = query.toLowerCase();
-            return displayName.contains(searchQuery) || email.contains(searchQuery);
-          })
-          .toList();
+        final displayName = user.displayName?.toLowerCase() ?? '';
+        final email = user.email.toLowerCase();
+        final searchQuery = query.toLowerCase();
+        return displayName.contains(searchQuery) || email.contains(searchQuery);
+      }).toList();
     } catch (e) {
       throw Exception('Failed to search users: $e');
     }
   }
 }
-

@@ -13,7 +13,7 @@ import 'package:sportify_app/repositories/friendship_repository.dart';
 /// Applies Single Responsibility Principle (SRP) - coordinates between repositories
 /// Implements IFirestoreService interface - Dependency Inversion Principle (DIP)
 class FirestoreService implements IFirestoreService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore;
   final UserRepository _userRepository;
   final RoomRepository _roomRepository;
   final FriendshipRepository _friendshipRepository;
@@ -168,7 +168,7 @@ class FirestoreService implements IFirestoreService {
       print("Error sending chat message: $e"); // Use logger
     }
   }
-  
+
   @override
   Stream<List<Friendship>> getFriendshipsForUser(String userId) {
     // Use repository for data access (Abstraction)
@@ -185,7 +185,6 @@ class FirestoreService implements IFirestoreService {
       return [];
     }
   }
-
 
   @override
   Future<void> acceptFriendRequest(String friendshipId) async {
@@ -230,10 +229,12 @@ class FirestoreService implements IFirestoreService {
   }
 
   @override
-  Future<Friendship?> getFriendshipBetweenUsers(String user1Id, String user2Id) async {
+  Future<Friendship?> getFriendshipBetweenUsers(
+      String user1Id, String user2Id) async {
     try {
       // Use repository for data access (Abstraction)
-      return await _friendshipRepository.getFriendshipBetweenUsers(user1Id, user2Id);
+      return await _friendshipRepository.getFriendshipBetweenUsers(
+          user1Id, user2Id);
     } catch (e) {
       print("Error checking friendship: $e");
       return null;
@@ -241,9 +242,11 @@ class FirestoreService implements IFirestoreService {
   }
 
   @override
-  Future<FriendshipStatus?> getFriendshipStatus(String currentUserId, String otherUserId) async {
+  Future<FriendshipStatus?> getFriendshipStatus(
+      String currentUserId, String otherUserId) async {
     try {
-      final friendship = await getFriendshipBetweenUsers(currentUserId, otherUserId);
+      final friendship =
+          await getFriendshipBetweenUsers(currentUserId, otherUserId);
       return friendship?.status;
     } catch (e) {
       print("Error getting friendship status: $e");
@@ -261,5 +264,4 @@ class FirestoreService implements IFirestoreService {
       throw Exception('Failed to delete friendship');
     }
   }
-
 }

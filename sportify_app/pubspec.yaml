@@ -17,6 +17,9 @@ dependencies:
   google_sign_in: ^6.2.1
   provider: ^6.1.2
   http: ^1.2.0
+  
+  # --- CRITICAL FIX: ADDING THE SVG PACKAGE ---
+  flutter_svg: ^2.0.10+1 
 
 dev_dependencies:
   flutter_test:
@@ -26,3 +29,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # --- ASSET CONFIGURATION ---
+  assets:
+    - assets/images/ # Registers your App_Icon.png folder (Best practice)
+    - assets/images/floating_icons/  # KEEP THIS COMMENTED OUT UNTIL YOU CREATE THE FOLDER AND ADD SVG FILES
