@@ -79,6 +79,38 @@ class FirestoreService implements IFirestoreService {
     return _roomRepository.getPublicRoomsStream();
   }
 
+  /// Gets a single room by its ID
+  Future<Room?> getRoomById(String roomId) async {
+    try {
+      return await _roomRepository.getRoomById(roomId);
+    } catch (e) {
+      Logger.error("Error fetching room by ID", error: e, tag: 'FirestoreService');
+      return null;
+    }
+  }
+
+  /// Updates an existing room
+  @override
+  Future<void> updateRoom(Room room) async {
+    try {
+      await _roomRepository.updateRoom(room);
+    } catch (e) {
+      Logger.error("Error updating room", error: e, tag: 'FirestoreService');
+      throw Exception('Failed to update room');
+    }
+  }
+
+  /// Deletes a room and all its messages
+  @override
+  Future<void> deleteRoom(String roomId) async {
+    try {
+      await _roomRepository.deleteRoom(roomId);
+    } catch (e) {
+      Logger.error("Error deleting room", error: e, tag: 'FirestoreService');
+      throw Exception('Failed to delete room');
+    }
+  }
+
   // --- Video Content Functions (UC-04) ---
 
   /// Fetches a single video by contentId

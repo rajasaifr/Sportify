@@ -19,6 +19,8 @@ abstract class IFirestoreService {
   });
 
   Stream<List<Room>> getPublicRoomsStream();
+  Future<void> updateRoom(Room room);
+  Future<void> deleteRoom(String roomId);
 
   // Video Content Functions
   Future<List<VideoContent>> getAvailableVideos();
