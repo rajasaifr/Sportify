@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sportify_app/models/user_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
-import 'package:sportify_app/services/firestore_service.dart';
-// Make sure to point this to the correct location or use FirestoreService if you merged them
 import 'package:sportify_app/services/profile_service.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -30,7 +28,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _loadCurrentUser() async {
     final authService = Provider.of<AuthService>(context, listen: false);
-    // Note: If you moved getUserProfile to FirestoreService, update this line:
     final profileService = Provider.of<ProfileService>(context, listen: false);
 
     try {
@@ -97,11 +94,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // Added Sign Out Function
   void _signOut() {
     final authService = Provider.of<AuthService>(context, listen: false);
     authService.signOut();
-    // The AuthWrapper in main.dart will automatically take them to Login
   }
 
   void _onTeamsUpdated(List<String> teams) {
@@ -117,44 +112,96 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
+  // Color scheme matching login page
+  static const Color purpleButton = Color(0xFF6C5CE7);
+  static const Color containerGradient1 = Color(0xFF1a1a2e);
+  static const Color containerGradient2 = Color(0xFF16213e);
+  static const Color containerGradient3 = Color(0xFF0f3460);
+
   @override
   Widget build(BuildContext context) {
-    // We removed the Scaffold and AppBar so it fits nicely in the Tabs
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              _buildProfilePictureSection(),
-              const SizedBox(height: 24),
-              _buildBasicInfoSection(),
-              const SizedBox(height: 24),
-              _buildPreferencesSection(),
-              const SizedBox(height: 32),
-              _buildActionButtons(),
-
-              // --- NEW SIGNOUT BUTTON ---
-              const SizedBox(height: 40),
-              const Divider(),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red.shade900,
-                    foregroundColor: Colors.white,
+    return Scaffold(
+      backgroundColor: const Color(0xFF1a1a2e), // Match container gradient start color
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1a1a2e),
+        elevation: 0,
+        title: const Text(
+          'Manage Account',
+          style: TextStyle(color: Colors.white),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20.0),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 420),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    containerGradient1,
+                    containerGradient2,
+                    containerGradient3,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.3),
+                    blurRadius: 30,
+                    offset: const Offset(0, 8),
+                    spreadRadius: 2,
                   ),
-                  onPressed: _signOut,
-                  icon: const Icon(Icons.logout),
-                  label: const Text('Sign Out'),
+                ],
+              ),
+              padding: const EdgeInsets.all(32.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildProfilePictureSection(),
+                    const SizedBox(height: 24),
+                    _buildBasicInfoSection(),
+                    const SizedBox(height: 24),
+                    _buildPreferencesSection(),
+                    const SizedBox(height: 32),
+                    _buildActionButtons(),
+                    const SizedBox(height: 20),
+                    Divider(color: Colors.white.withOpacity(0.2)),
+                    const SizedBox(height: 20),
+                    // Sign Out Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade900,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                        onPressed: _signOut,
+                        icon: const Icon(Icons.logout),
+                        label: const Text(
+                          'Sign Out',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 40), // Extra space at bottom
-            ],
+            ),
           ),
         ),
       ),
@@ -162,22 +209,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildProfilePictureSection() {
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: 50,
-          backgroundColor: Colors.grey[800],
-          child: const Icon(Icons.person, size: 50, color: Colors.grey),
-        ),
-        const SizedBox(height: 8),
-        TextButton.icon(
-          onPressed: () {
-            // TODO: Implement image picker
-          },
-          icon: const Icon(Icons.camera_alt),
-          label: const Text('Change Photo'),
-        ),
-      ],
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final profileService = Provider.of<ProfileService>(context, listen: false);
+    final currentUser = authService.currentUser;
+
+    return StreamBuilder<UserModel?>(
+      stream: currentUser != null
+          ? profileService.getUserProfileStream(currentUser.uid)
+          : Stream.value(null),
+      builder: (context, snapshot) {
+        final userModel = snapshot.data;
+        final displayName = userModel?.displayName ?? currentUser?.displayName ?? currentUser?.email?.split('@')[0] ?? 'U';
+        final profilePicUrl = userModel?.profilePicUrl ?? currentUser?.photoURL;
+        final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
+
+        return Column(
+          children: [
+            CircleAvatar(
+              radius: 50,
+              backgroundColor: Colors.redAccent,
+              backgroundImage: profilePicUrl != null
+                  ? NetworkImage(profilePicUrl) as ImageProvider?
+                  : null,
+              child: profilePicUrl == null
+                  ? Text(
+                      initial,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: () {
+                // TODO: Implement photo upload
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Photo upload coming soon!')),
+                );
+              },
+              icon: const Icon(Icons.camera_alt, color: purpleButton),
+              label: const Text(
+                'Change Photo',
+                style: TextStyle(color: purpleButton),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -185,19 +266,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           'Basic Information',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         const SizedBox(height: 16),
         TextFormField(
           controller: _displayNameController,
-          decoration: const InputDecoration(
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
             labelText: 'Display Name',
-            border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.person),
+            labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+            prefixIcon: const Icon(Icons.person, color: Colors.white70),
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.1),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: purpleButton, width: 2),
+            ),
           ),
           validator: (value) {
             if (value == null || value.isEmpty) {
@@ -212,10 +310,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 16),
         TextFormField(
           controller: _bioController,
-          decoration: const InputDecoration(
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
             labelText: 'Bio (Optional)',
-            border: OutlineInputBorder(),
+            labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
             alignLabelWithHint: true,
+            filled: true,
+            fillColor: Colors.white.withOpacity(0.1),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: purpleButton, width: 2),
+            ),
           ),
           maxLines: 3,
           validator: (value) {
@@ -233,18 +346,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           'Sports Preferences',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
         const SizedBox(height: 8),
         Text(
           'Select your favorite teams',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[400],
-              ),
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.7),
+          ),
         ),
         const SizedBox(height: 16),
         _buildTeamSelection(),
@@ -272,7 +387,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: availableTeams.map((team) {
         final isSelected = _selectedTeams.contains(team);
         return FilterChip(
-          label: Text(team),
+          label: Text(
+            team,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.white70,
+            ),
+          ),
           selected: isSelected,
           onSelected: (_) {
             setState(() {
@@ -285,34 +405,49 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _onTeamsUpdated(_selectedTeams);
           },
           checkmarkColor: Colors.white,
-          selectedColor: Theme.of(context).primaryColor,
+          selectedColor: purpleButton,
+          backgroundColor: Colors.white.withOpacity(0.1),
+          side: BorderSide(
+            color: isSelected
+                ? purpleButton
+                : Colors.white.withOpacity(0.3),
+          ),
         );
       }).toList(),
     );
   }
 
   Widget _buildActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-            ),
-            onPressed: _isLoading ? null : _saveProfile,
-            child: _isLoading
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white),
-                  )
-                : const Text('Save Changes'),
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: purpleButton,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
           ),
+          elevation: 0,
         ),
-      ],
+        onPressed: _isLoading ? null : _saveProfile,
+        child: _isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
+              )
+            : const Text(
+                'Save Changes',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+      ),
     );
   }
 }
