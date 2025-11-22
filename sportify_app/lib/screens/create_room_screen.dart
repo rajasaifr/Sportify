@@ -130,6 +130,205 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     );
   }
 
+  /// Shows a dialog to enter room code for private rooms
+  Future<bool> _showRoomCodeDialog(Room room) async {
+    final codeController = TextEditingController();
+    bool? result = false;
+    
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          backgroundColor: containerGradient1,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: purpleButton.withValues(alpha: 0.5),
+              width: 1,
+            ),
+          ),
+          title: const Text(
+            'Private Room',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'This room requires an access code.',
+                style: TextStyle(color: Colors.white70),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: codeController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Enter Room Code',
+                  labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+                  hintText: 'e.g., Cr23AB',
+                  hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.1),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: purpleButton, width: 2),
+                  ),
+                ),
+                textAlign: TextAlign.center,
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 6,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                result = false;
+              },
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final enteredCode = codeController.text.trim().toUpperCase();
+                if (enteredCode == room.roomCode?.toUpperCase()) {
+                  Navigator.of(dialogContext).pop();
+                  result = true;
+                } else {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    SnackBar(
+                      content: const Text('Invalid room code. Please try again.'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: purpleButton,
+              ),
+              child: const Text('Join'),
+            ),
+          ],
+        );
+      },
+    );
+    
+    return result ?? false;
+  }
+
+  /// Shows delete room dialog
+  Future<void> _showDeleteRoomDialog(BuildContext context, Room room) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: containerGradient1,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: purpleButton.withValues(alpha: 0.5),
+            width: 1,
+          ),
+        ),
+        title: const Text(
+          'Delete Room',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'Are you sure you want to delete this room? This action cannot be undone and all messages will be deleted.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      try {
+        final firestoreService = Provider.of<FirestoreService>(context, listen: false);
+        await firestoreService.deleteRoom(room.roomId);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Room deleted successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete room: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  /// Navigates to room screen with code verification for private rooms
+  Future<void> _navigateToRoomWithVerification(Room room) async {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final currentUserId = authService.currentUser?.uid;
+    
+    // If user is the host, allow direct access
+    if (currentUserId == room.hostId) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => RoomScreen(room: room),
+        ),
+      );
+      return;
+    }
+    
+    // If room is private, ask for code
+    if (room.roomType == RoomType.private) {
+      final hasAccess = await _showRoomCodeDialog(room);
+      if (hasAccess && mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => RoomScreen(room: room),
+          ),
+        );
+      }
+    } else {
+      // Public room, allow direct access
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => RoomScreen(room: room),
+        ),
+      );
+    }
+  }
+
   // Color scheme matching login page
   static const Color purpleButton = Color(0xFF6C5CE7);
   static const Color containerGradient1 = Color(0xFF1a1a2e);
@@ -427,7 +626,9 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                             ),
                           ),
                           onChanged: (type) {
-                            setState(() => _selectedRoomType = type ?? RoomType.public);
+                            setState(() {
+                              _selectedRoomType = type ?? RoomType.public;
+                            });
                           },
                           items: RoomType.values.map((type) {
                             String typeName =
@@ -443,6 +644,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                         ),
                       ],
                     ),
+
 
                     const SizedBox(height: 32),
 
@@ -506,7 +708,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         ),
         const SizedBox(height: 16),
         StreamBuilder<List<Room>>(
-          stream: firestoreService.getPublicRoomsStream(),
+          stream: firestoreService.getAllRoomsStream(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
@@ -581,12 +783,18 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                       width: 50,
                       height: 50,
                       decoration: BoxDecoration(
-                        color: Colors.redAccent.withValues(alpha: 0.2),
+                        color: room.roomType == RoomType.private
+                            ? Colors.orange.withValues(alpha: 0.2)
+                            : Colors.redAccent.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(
-                        Icons.play_circle_outline,
-                        color: Colors.redAccent,
+                      child: Icon(
+                        room.roomType == RoomType.private
+                            ? Icons.lock
+                            : Icons.play_circle_outline,
+                        color: room.roomType == RoomType.private
+                            ? Colors.orange
+                            : Colors.redAccent,
                       ),
                     ),
                     title: Text(
@@ -602,26 +810,46 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                         color: Colors.white.withValues(alpha: 0.7),
                       ),
                     ),
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${room.participants.length} 👤',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w500,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${room.participants.length} 👤',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ),
-                      ),
+                        // Delete button for host's rooms
+                        Builder(
+                          builder: (context) {
+                            final authService = Provider.of<AuthService>(context, listen: false);
+                            final currentUserId = authService.currentUser?.uid;
+                            final isHost = currentUserId == room.hostId;
+                            
+                            if (isHost) {
+                              return IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                                onPressed: () => _showDeleteRoomDialog(context, room),
+                                tooltip: 'Delete Room',
+                                padding: const EdgeInsets.only(left: 8),
+                                constraints: const BoxConstraints(),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
+                        ),
+                      ],
                     ),
                     onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => RoomScreen(room: room),
-                        ),
-                      );
+                      _navigateToRoomWithVerification(room);
                     },
                   ),
                 );
