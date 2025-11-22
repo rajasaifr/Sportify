@@ -1,41 +1,64 @@
-/// Model for PlaybackState, based on the Analysis Class Diagram.
-/// This tracks the synchronized playback status of a video in a room.
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+/// Model for tracking video playback state in a room
 class PlaybackState {
-  final String roomId; // The ID of the room this state belongs to
-  final String contentId; // Links to VideoContent
-  final int currentPosition; // Position in seconds
+  final String roomId;
+  final String userId;
   final bool isPlaying;
-  final DateTime? lastUpdated; // When this state was last changed
+  final double currentTime; // Current playback time in seconds
+  final DateTime lastUpdated;
+  final bool isHost;
 
   PlaybackState({
     required this.roomId,
-    required this.contentId,
-    required this.currentPosition,
+    required this.userId,
     required this.isPlaying,
-    this.lastUpdated,
+    required this.currentTime,
+    required this.lastUpdated,
+    required this.isHost,
   });
 
-  /// Converts this PlaybackState instance to a JSON Map.
   Map<String, dynamic> toJson() {
     return {
       'roomId': roomId,
-      'contentId': contentId,
-      'currentPosition': currentPosition,
+      'userId': userId,
       'isPlaying': isPlaying,
-      'lastUpdated': lastUpdated?.toIso8601String(),
+      'currentTime': currentTime,
+      'lastUpdated': lastUpdated.toIso8601String(),
+      'isHost': isHost,
     };
   }
 
-  /// Creates a PlaybackState instance from a JSON Map.
   factory PlaybackState.fromJson(Map<String, dynamic> json) {
     return PlaybackState(
-      roomId: json['roomId'],
-      contentId: json['contentId'],
-      currentPosition: json['currentPosition'],
-      isPlaying: json['isPlaying'],
+      roomId: json['roomId'] ?? '',
+      userId: json['userId'] ?? '',
+      isPlaying: json['isPlaying'] ?? false,
+      currentTime: (json['currentTime'] as num?)?.toDouble() ?? 0.0,
       lastUpdated: json['lastUpdated'] != null
-          ? DateTime.parse(json['lastUpdated'])
-          : null,
+          ? (json['lastUpdated'] is Timestamp
+              ? (json['lastUpdated'] as Timestamp).toDate()
+              : DateTime.parse(json['lastUpdated'].toString()))
+          : DateTime.now(),
+      isHost: json['isHost'] ?? false,
+    );
+  }
+
+  PlaybackState copyWith({
+    String? roomId,
+    String? userId,
+    bool? isPlaying,
+    double? currentTime,
+    DateTime? lastUpdated,
+    bool? isHost,
+  }) {
+    return PlaybackState(
+      roomId: roomId ?? this.roomId,
+      userId: userId ?? this.userId,
+      isPlaying: isPlaying ?? this.isPlaying,
+      currentTime: currentTime ?? this.currentTime,
+      lastUpdated: lastUpdated ?? this.lastUpdated,
+      isHost: isHost ?? this.isHost,
     );
   }
 }

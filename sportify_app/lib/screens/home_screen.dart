@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:sportify_app/models/room_model.dart';
 import 'package:sportify_app/models/user_model.dart';
 import 'package:sportify_app/models/sport_model.dart';
 import 'package:sportify_app/models/team_model.dart';
-import 'package:sportify_app/services/firestore_service.dart';
+import 'package:sportify_app/models/room_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/profile_service.dart';
 import 'package:sportify_app/services/sports_api_service.dart';
+import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/screens/create_room_screen.dart';
-import 'package:sportify_app/screens/room_screen.dart';
 import 'package:sportify_app/screens/profile_screen.dart';
 import 'package:sportify_app/screens/friends_screen.dart';
+import 'package:sportify_app/screens/room_screen.dart';
 import 'package:sportify_app/theme/app_theme.dart';
 import 'package:sportify_app/widgets/neon_button.dart';
 import 'package:sportify_app/widgets/floating_emitter.dart';
@@ -648,8 +648,8 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildMainContentArea(BuildContext context) {
-    final firestoreService = Provider.of<FirestoreService>(context);
     final sportsApiService = SportsApiService();
+    final firestoreService = Provider.of<FirestoreService>(context);
 
     return Stack(
       children: [
