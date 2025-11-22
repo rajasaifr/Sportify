@@ -58,7 +58,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             ),
           ),
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: purpleButton,
               shape: BoxShape.circle,
             ),
@@ -132,10 +132,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
         }
 
         if (snapshot.hasError) {
-          return Center(
+          return const Center(
             child: Text(
               'Error loading friends',
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white),
             ),
           );
         }
@@ -147,16 +147,16 @@ class _FriendsScreenState extends State<FriendsScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.people_outline, size: 64, color: Colors.white.withOpacity(0.5)),
+                Icon(Icons.people_outline, size: 64, color: Colors.white.withValues(alpha: 0.5)),
                 const SizedBox(height: 16),
                 Text(
                   'No friends yet',
-                  style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.7)),
+                  style: TextStyle(fontSize: 18, color: Colors.white.withValues(alpha: 0.7)),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Search for users and send friend requests!',
-                  style: TextStyle(color: Colors.white.withOpacity(0.5)),
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -193,7 +193,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     ),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       width: 1,
                     ),
                   ),
@@ -211,7 +211,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     ),
                     subtitle: Text(
                       friendUser?.email ?? '',
-                      style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
                     ),
                   ),
                 );
@@ -242,10 +242,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
         }
 
         if (snapshot.hasError) {
-          return Center(
+          return const Center(
             child: Text(
               'Error loading requests',
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: Colors.white),
             ),
           );
         }
@@ -258,11 +258,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.mark_email_unread_outlined,
-                    size: 64, color: Colors.white.withOpacity(0.5)),
+                    size: 64, color: Colors.white.withValues(alpha: 0.5)),
                 const SizedBox(height: 16),
                 Text(
                   'No pending requests',
-                  style: TextStyle(fontSize: 18, color: Colors.white.withOpacity(0.7)),
+                  style: TextStyle(fontSize: 18, color: Colors.white.withValues(alpha: 0.7)),
                 ),
               ],
             ),
@@ -292,7 +292,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     ),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       width: 1,
                     ),
                   ),
@@ -310,7 +310,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                     ),
                     subtitle: Text(
                       'Wants to be your friend',
-                      style: TextStyle(color: Colors.white.withOpacity(0.7)),
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -352,10 +352,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
       await Provider.of<FirestoreService>(context, listen: false)
           .acceptFriendRequest(friendshipId);
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Friend request accepted!')),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to accept request')),
       );
@@ -367,10 +369,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
       await Provider.of<FirestoreService>(context, listen: false)
           .declineFriendRequest(friendshipId);
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Friend request declined')),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to decline request')),
       );

@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:sportify_app/models/user_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/firestore_service.dart';
-import 'package:sportify_app/models/friendship_model.dart'; 
+import 'package:sportify_app/models/friendship_model.dart';
+import 'package:sportify_app/utils/logger.dart'; 
 
 class AddFriendScreen extends StatefulWidget {
   const AddFriendScreen({super.key});
@@ -59,7 +60,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
             ),
           ),
           const SizedBox(height: 8),
@@ -68,17 +69,17 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
             style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
               hintText: 'Search by username...',
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
               prefixIcon: const Icon(Icons.search, color: Colors.white70),
               filled: true,
-              fillColor: Colors.white.withOpacity(0.1),
+              fillColor: Colors.white.withValues(alpha: 0.1),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -110,7 +111,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
         child: Center(
           child: Text(
             'Search for users by their display name',
-            style: TextStyle(color: Colors.white.withOpacity(0.7)),
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
           ),
         ),
       );
@@ -143,7 +144,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
         ),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: Colors.white.withOpacity(0.1),
+          color: Colors.white.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
@@ -161,7 +162,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
         ),
         subtitle: Text(
           user.email,
-          style: TextStyle(color: Colors.white.withOpacity(0.7)),
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
         ),
         trailing: _buildAddButton(user, _getCurrentUserId()),
       ),
@@ -201,7 +202,7 @@ Widget _getFriendButtonByStatus(FriendshipStatus? status, UserModel user) {
           final isRequestSentByMe = friendship?.user1Id == _getCurrentUserId();
           
           if (isRequestSentByMe) {
-            return OutlinedButton(
+            return const OutlinedButton(
               onPressed: null,
               child: Text('Request Sent'),
             );
@@ -221,10 +222,10 @@ Widget _getFriendButtonByStatus(FriendshipStatus? status, UserModel user) {
                   ),
                   child: const Text('Accept'),
                 ),
-                SizedBox(width: 8),
+                const SizedBox(width: 8),
                 OutlinedButton(
                   onPressed: () => _declineFriendRequest(friendship!.friendshipId),
-                  child: Text('Decline'),
+                  child: const Text('Decline'),
                 ),
               ],
             );
@@ -233,7 +234,7 @@ Widget _getFriendButtonByStatus(FriendshipStatus? status, UserModel user) {
       );
       
     case FriendshipStatus.accepted:
-      return OutlinedButton(
+      return const OutlinedButton(
         onPressed: null,
         child: Text('Friends'),
       );
@@ -292,7 +293,7 @@ Widget _getFriendButtonByStatus(FriendshipStatus? status, UserModel user) {
       setState(() {
         _isSearching = false;
       });
-      print("Search error: $e");
+      Logger.error("Search error", error: e, tag: 'AddFriendScreen');
     }
   }
 
@@ -305,6 +306,7 @@ Widget _getFriendButtonByStatus(FriendshipStatus? status, UserModel user) {
 
   // Prevent sending to yourself
   if (currentUser.uid == targetUser.uid) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('You cannot send a friend request to yourself')),
     );
@@ -318,6 +320,7 @@ Widget _getFriendButtonByStatus(FriendshipStatus? status, UserModel user) {
       targetUser.uid
     );
 
+    if (!mounted) return;
     if (existingFriendship != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Friend request already ${existingFriendship.status.name}')),
@@ -331,6 +334,7 @@ Widget _getFriendButtonByStatus(FriendshipStatus? status, UserModel user) {
       toUserId: targetUser.uid,
     );
 
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Friend request sent to ${targetUser.displayName}')),
     );
@@ -339,6 +343,7 @@ Widget _getFriendButtonByStatus(FriendshipStatus? status, UserModel user) {
     setState(() {});
     
   } catch (e) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Failed to send request: $e')),
     );
@@ -348,6 +353,7 @@ Widget _getFriendButtonByStatus(FriendshipStatus? status, UserModel user) {
   try {
     await Provider.of<FirestoreService>(context, listen: false)
         .acceptFriendRequest(friendshipId);
+    if (!mounted) return;
     setState(() {}); // Refresh UI
   } catch (e) {
     // Handle error
@@ -359,8 +365,10 @@ void _declineFriendRequest(String friendshipId) async {
     // Instead of updating status to declined, DELETE the friendship
     await Provider.of<FirestoreService>(context, listen: false)
         .deleteFriendship(friendshipId);
+    if (!mounted) return;
     setState(() {}); // Refresh UI
   } catch (e) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Failed to decline request: $e')),
     );

@@ -8,6 +8,7 @@ import 'package:sportify_app/services/interfaces/firestore_service_interface.dar
 import 'package:sportify_app/repositories/user_repository.dart';
 import 'package:sportify_app/repositories/room_repository.dart';
 import 'package:sportify_app/repositories/friendship_repository.dart';
+import 'package:sportify_app/utils/logger.dart';
 
 /// Firestore Service Implementation
 /// Applies Single Responsibility Principle (SRP) - coordinates between repositories
@@ -66,7 +67,7 @@ class FirestoreService implements IFirestoreService {
       await _roomRepository.createRoom(newRoom);
       return roomId;
     } catch (e) {
-      print("Error creating room: $e");
+      Logger.error("Error creating room", error: e, tag: 'FirestoreService');
       return null;
     }
   }
@@ -82,6 +83,7 @@ class FirestoreService implements IFirestoreService {
 
   /// Fetches a list of all available videos.
   /// Assumes videos are stored in a collection named 'videos'.
+  @override
   Future<List<VideoContent>> getAvailableVideos() async {
     try {
       // 1. Get all documents from the 'videos' collection
@@ -95,7 +97,7 @@ class FirestoreService implements IFirestoreService {
 
       return videos;
     } catch (e) {
-      print("Error fetching videos: $e"); // Use logger in production
+      Logger.error("Error fetching videos", error: e, tag: 'FirestoreService');
       return []; // Return an empty list on error
     }
   }
@@ -124,7 +126,7 @@ class FirestoreService implements IFirestoreService {
       // Use repository for data access (Abstraction)
       await _friendshipRepository.createFriendship(newRequest);
     } catch (e) {
-      print("Error sending friend request: $e");
+      Logger.error("Error sending friend request", error: e, tag: 'FirestoreService');
       rethrow;
     }
   }
@@ -165,7 +167,7 @@ class FirestoreService implements IFirestoreService {
           .doc(messageId)
           .set(newMessage.toJson());
     } catch (e) {
-      print("Error sending chat message: $e"); // Use logger
+      Logger.error("Error sending chat message", error: e, tag: 'FirestoreService');
     }
   }
   
@@ -181,7 +183,7 @@ class FirestoreService implements IFirestoreService {
       // Use repository for data access (Abstraction)
       return await _userRepository.searchUsers(searchQuery);
     } catch (e) {
-      print("Error searching users: $e");
+      Logger.error("Error searching users", error: e, tag: 'FirestoreService');
       return [];
     }
   }
@@ -196,7 +198,7 @@ class FirestoreService implements IFirestoreService {
         FriendshipStatus.accepted,
       );
     } catch (e) {
-      print("Error accepting friend request: $e");
+      Logger.error("Error accepting friend request", error: e, tag: 'FirestoreService');
       throw Exception('Failed to accept friend request');
     }
   }
@@ -207,7 +209,7 @@ class FirestoreService implements IFirestoreService {
       // Use repository for data access (Abstraction)
       await _friendshipRepository.deleteFriendship(friendshipId);
     } catch (e) {
-      print("Error declining friend request: $e");
+      Logger.error("Error declining friend request", error: e, tag: 'FirestoreService');
       throw Exception('Failed to decline friend request');
     }
   }
@@ -224,7 +226,7 @@ class FirestoreService implements IFirestoreService {
       // Use repository for data access (Abstraction)
       return await _userRepository.getUserById(userId);
     } catch (e) {
-      print("Error getting user by ID: $e");
+      Logger.error("Error getting user by ID", error: e, tag: 'FirestoreService');
       return null;
     }
   }
@@ -235,7 +237,7 @@ class FirestoreService implements IFirestoreService {
       // Use repository for data access (Abstraction)
       return await _friendshipRepository.getFriendshipBetweenUsers(user1Id, user2Id);
     } catch (e) {
-      print("Error checking friendship: $e");
+      Logger.error("Error checking friendship", error: e, tag: 'FirestoreService');
       return null;
     }
   }
@@ -246,7 +248,7 @@ class FirestoreService implements IFirestoreService {
       final friendship = await getFriendshipBetweenUsers(currentUserId, otherUserId);
       return friendship?.status;
     } catch (e) {
-      print("Error getting friendship status: $e");
+      Logger.error("Error getting friendship status", error: e, tag: 'FirestoreService');
       return null;
     }
   }
@@ -257,7 +259,7 @@ class FirestoreService implements IFirestoreService {
       // Use repository for data access (Abstraction)
       await _friendshipRepository.deleteFriendship(friendshipId);
     } catch (e) {
-      print("Error deleting friendship: $e");
+      Logger.error("Error deleting friendship", error: e, tag: 'FirestoreService');
       throw Exception('Failed to delete friendship');
     }
   }

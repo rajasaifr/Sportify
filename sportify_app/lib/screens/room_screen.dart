@@ -22,8 +22,7 @@ class RoomScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text('We are watching contentId: ${room.contentId}'),
-            //
-            // --- TODO ---
+            // Future enhancements:
             // 1. Add the Video Player here, using the room.contentId
             // 2. Add the Chat Stream (UC-16)
             // 3. Add the Live Reactions (UC-17)

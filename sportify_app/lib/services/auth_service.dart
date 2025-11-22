@@ -1,9 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sportify_app/models/user_model.dart';
 import 'package:sportify_app/services/interfaces/auth_service_interface.dart';
 import 'package:sportify_app/repositories/user_repository.dart';
+import 'package:sportify_app/utils/logger.dart';
 
 /// Authentication Service Implementation
 /// Applies Single Responsibility Principle (SRP) - handles only authentication
@@ -31,12 +31,12 @@ class AuthService implements IAuthService {
         // (this will fail silently if there's an issue)
       } on AssertionError catch (e) {
         // Catch assertion errors specifically (these happen in debug mode)
-        print("Google Sign-In assertion error (Client ID not configured): $e");
+        Logger.warning("Google Sign-In assertion error (Client ID not configured)", error: e, tag: 'AuthService');
         _googleSignInAvailable = false;
         _googleSignIn = null;
         return null;
       } catch (e) {
-        print("Google Sign-In initialization failed: $e");
+        Logger.warning("Google Sign-In initialization failed", error: e, tag: 'AuthService');
         _googleSignInAvailable = false;
         _googleSignIn = null;
         return null;
@@ -46,9 +46,11 @@ class AuthService implements IAuthService {
   }
 
   /// Getter to expose the current user from Firebase Auth
+  @override
   User? get currentUser => _auth.currentUser;
 
   /// Stream to listen for auth changes (e.g., login/logout)
+  @override
   Stream<UserModel?> get authStateChanges {
     return _auth.authStateChanges().asyncMap((firebaseUser) async {
       if (firebaseUser == null) {
@@ -65,12 +67,13 @@ class AuthService implements IAuthService {
     try {
       return await _userRepository.getUserById(uid);
     } catch (e) {
-      print("Error fetching user model: $e");
+      Logger.error("Error fetching user model", error: e, tag: 'AuthService');
       return null;
     }
   }
 
   /// Sign Up with Email & Password
+  @override
   Future<User?> signUpWithEmail({
     required String email,
     required String password,
@@ -100,14 +103,15 @@ class AuthService implements IAuthService {
         return firebaseUser;
       }
       return null;
-    } on FirebaseAuthException catch (e) {
-      throw e;
-    } catch (e) {
+    } on FirebaseAuthException {
+      rethrow;
+    } catch (_) {
       throw Exception("An unknown error occurred during sign up.");
     }
   }
 
   /// Sign In with Email & Password
+  @override
   Future<User?> signInWithEmail({
     required String email,
     required String password,
@@ -118,14 +122,15 @@ class AuthService implements IAuthService {
         password: password,
       );
       return userCredential.user;
-    } on FirebaseAuthException catch (e) {
-      throw e;
-    } catch (e) {
+    } on FirebaseAuthException {
+      rethrow;
+    } catch (_) {
       throw Exception("An unknown error occurred during sign in.");
     }
   }
 
   /// Sign In with Google
+  @override
   Future<User?> signInWithGoogle() async {
     try {
       // Check if Google Sign-In is available
@@ -144,7 +149,7 @@ class AuthService implements IAuthService {
       } catch (e) {
         // Silent sign-in failed or threw an error (common on web)
         // This is expected behavior, continue to regular sign-in
-        print("Silent sign-in not available: $e");
+        Logger.debug("Silent sign-in not available: $e", tag: 'AuthService');
         googleUser = null;
       }
       
@@ -153,7 +158,7 @@ class AuthService implements IAuthService {
         try {
           googleUser = await googleSignIn.signIn();
         } catch (e) {
-          print("Error during Google sign-in: $e");
+          Logger.error("Error during Google sign-in", error: e, tag: 'AuthService');
           rethrow;
         }
         if (googleUser == null) {
@@ -190,12 +195,13 @@ class AuthService implements IAuthService {
       }
       return null;
     } catch (e) {
-      print("Error signing in with Google: $e");
+      Logger.error("Error signing in with Google", error: e, tag: 'AuthService');
       rethrow; // Re-throw so the UI can show the error message
     }
   }
 
   /// Sign Out
+  @override
   Future<void> signOut() async {
     try {
       final googleSignIn = _getGoogleSignInInstance();
@@ -206,7 +212,7 @@ class AuthService implements IAuthService {
           }
         } catch (e) {
           // Ignore Google sign out errors
-          print("Error signing out from Google: $e");
+          Logger.warning("Error signing out from Google", error: e, tag: 'AuthService');
         }
       }
       await _auth.signOut();
@@ -217,6 +223,7 @@ class AuthService implements IAuthService {
   }
 
   /// Forgot Password
+  @override
   Future<void> sendPasswordResetEmail(String email) async {
     try {
       await _auth.sendPasswordResetEmail(email: email);
@@ -226,6 +233,7 @@ class AuthService implements IAuthService {
   }
 
   /// Change Password
+  @override
   Future<void> changePassword(String newPassword) async {
     try {
       await _auth.currentUser?.updatePassword(newPassword);

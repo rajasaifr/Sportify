@@ -150,7 +150,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.blue.withOpacity(0.3),
+                    color: Colors.blue.withValues(alpha: 0.3),
                     blurRadius: 30,
                     offset: const Offset(0, 8),
                     spreadRadius: 2,
@@ -172,7 +172,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 32),
                     _buildActionButtons(),
                     const SizedBox(height: 20),
-                    Divider(color: Colors.white.withOpacity(0.2)),
+                    Divider(color: Colors.white.withValues(alpha: 0.2)),
                     const SizedBox(height: 20),
                     // Sign Out Button
                     SizedBox(
@@ -245,7 +245,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 8),
             TextButton.icon(
               onPressed: () {
-                // TODO: Implement photo upload
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Photo upload coming soon!')),
                 );
@@ -280,17 +279,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             labelText: 'Display Name',
-            labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+            labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
             prefixIcon: const Icon(Icons.person, color: Colors.white70),
             filled: true,
-            fillColor: Colors.white.withOpacity(0.1),
+            fillColor: Colors.white.withValues(alpha: 0.1),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
@@ -313,17 +312,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           style: const TextStyle(color: Colors.white),
           decoration: InputDecoration(
             labelText: 'Bio (Optional)',
-            labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+            labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
             alignLabelWithHint: true,
             filled: true,
-            fillColor: Colors.white.withOpacity(0.1),
+            fillColor: Colors.white.withValues(alpha: 0.1),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
@@ -358,7 +357,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Text(
           'Select your favorite teams',
           style: TextStyle(
-            color: Colors.white.withOpacity(0.7),
+            color: Colors.white.withValues(alpha: 0.7),
           ),
         ),
         const SizedBox(height: 16),
@@ -406,11 +405,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           },
           checkmarkColor: Colors.white,
           selectedColor: purpleButton,
-          backgroundColor: Colors.white.withOpacity(0.1),
+          backgroundColor: Colors.white.withValues(alpha: 0.1),
           side: BorderSide(
             color: isSelected
                 ? purpleButton
-                : Colors.white.withOpacity(0.3),
+                : Colors.white.withValues(alpha: 0.3),
           ),
         );
       }).toList(),
