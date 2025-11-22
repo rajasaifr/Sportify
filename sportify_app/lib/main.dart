@@ -9,9 +9,9 @@ import 'package:sportify_app/services/interfaces/profile_service_interface.dart'
 
 // Screens
 import 'package:sportify_app/screens/auth_wrapper.dart';
-import 'package:sportify_app/utils/logger.dart';
 
 // Configuration & Theme
+import 'package:sportify_app/utils/logger.dart';
 import 'firebase_options.dart';
 import 'package:sportify_app/theme/app_theme.dart';
 
@@ -73,7 +73,7 @@ class MyApp extends StatelessWidget {
       title: 'Sportify',
 
       // Applying the Theme (SRP)
-      theme: AppTheme.stadiumNightTheme, // <-- ERROR HERE
+      theme: AppTheme.stadiumNightTheme,
 
       debugShowCheckedModeBanner: false,
       home: const AuthWrapper(),

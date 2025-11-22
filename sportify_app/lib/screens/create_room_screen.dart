@@ -93,7 +93,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                 builder: (context) => RoomScreen(room: createdRoom),
               ),
             );
-          } else {
+          } else if (mounted) {
             // If room fetch fails, just pop back
             Navigator.of(context).pop();
             _showErrorSnackBar('Room created but could not load it.');

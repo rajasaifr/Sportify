@@ -65,7 +65,7 @@ class AppTheme {
         backgroundColor: primary,
         foregroundColor: Colors.white,
         elevation: 10,
-        shadowColor: primary.withOpacity(0.5),
+        shadowColor: primary.withValues(alpha: 0.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         padding: const EdgeInsets.symmetric(vertical: 18),
         textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),

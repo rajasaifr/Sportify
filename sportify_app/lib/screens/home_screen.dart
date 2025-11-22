@@ -12,6 +12,9 @@ import 'package:sportify_app/screens/create_room_screen.dart';
 import 'package:sportify_app/screens/room_screen.dart';
 import 'package:sportify_app/screens/profile_screen.dart';
 import 'package:sportify_app/screens/friends_screen.dart';
+import 'package:sportify_app/theme/app_theme.dart';
+import 'package:sportify_app/widgets/neon_button.dart';
+import 'package:sportify_app/widgets/floating_emitter.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,11 +26,13 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isSidebarOpen = true; // Sidebar state
+  final ScrollController _scrollController =
+      ScrollController(); // To preserve scroll position
 
   @override
   void initState() {
     super.initState();
-    // 3 Tabs: Lobby, Room, Friends (Profile removed)
     _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       setState(() {});
@@ -37,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     _tabController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -47,80 +53,162 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1a1a2e), // Match container gradient start color
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1a2e),
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: Row(
+      backgroundColor: AppTheme.bgStart,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.topLeft,
+            radius: 1.5,
+            colors: [
+              Color(0xFF0A0A0F),
+              Color(0xFF000000),
+            ],
+          ),
+        ),
+        child: Stack(
           children: [
-            // Sportify Logo
-            GestureDetector(
-              onTap: _goToLobby,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: const BoxDecoration(
-                      color: Colors.redAccent,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.sports_soccer,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Sportify',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.0,
-                      color: Colors.white,
-                    ),
-                  ),
+            // 1. FLOATING EMITTER (Background Layer)
+            const Positioned.fill(
+              child: FloatingEmitter(
+                // --- JPG ASSET PATHS ---
+                assetPaths: [
+                  'assets/images/floating_icons/basketball.jpg',
+                  'assets/images/floating_icons/bat.jpg',
+                  'assets/images/floating_icons/glove.jpg',
+                  'assets/images/floating_icons/helmet.jpg',
+                  'assets/images/floating_icons/racket.jpg',
+                  'assets/images/floating_icons/soccer_ball.jpg',
                 ],
+                emissionInterval: Duration(milliseconds: 500),
+                particleDuration: Duration(seconds: 20),
+                particleSizeMin: 25.0, // Smaller icons
+                particleSizeMax: 45.0, // Smaller icons
+                maxParticles: 16, // Slightly increased
               ),
             ),
-            const SizedBox(width: 32),
-            // Tabs aligned horizontally with logo
-            Expanded(
-              child: TabBar(
-                controller: _tabController,
-                indicatorColor: Colors.redAccent,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.grey,
-                tabs: const [
-                  Tab(text: "Lobby"),
-                  Tab(text: "Room"),
-                  Tab(text: "Friends"),
-                ],
-              ),
+            // 2. MAIN CONTENT (Foreground Layer)
+            Column(
+              children: [
+                // Merged AppBar with Tabs, Logo, and Profile in one line
+                _buildMergedNavBar(context),
+                // Content Area
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildLobbyView(context),
+                      const CreateRoomScreen(),
+                      const FriendsScreen(),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 16),
-            // Profile button with dropdown
-            _buildProfileButton(context),
           ],
         ),
       ),
-      body: Container(
-        color: const Color(0xFF1a1a2e),
-        child: TabBarView(
-          controller: _tabController,
-          children: [
-            // 1. Lobby
-            _buildLobbyView(context),
+    );
+  }
 
-            // 2. Create Room
-            const CreateRoomScreen(),
-
-            // 3. Friends
-            const FriendsScreen(),
-          ],
+  Widget _buildMergedNavBar(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.bgStart.withValues(alpha: 0.95),
+        border: Border(
+          bottom: BorderSide(
+            color: AppTheme.primary.withValues(alpha: 0.2),
+            width: 1,
+          ),
         ),
+      ),
+      child: Row(
+        children: [
+          // Sportify Logo with Neon Glow
+          GestureDetector(
+            onTap: _goToLobby,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.black,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primary.withValues(alpha: 0.5),
+                        blurRadius: 15,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                    border: Border.all(
+                      color: AppTheme.primary.withValues(alpha: 0.6),
+                      width: 2,
+                    ),
+                    image: const DecorationImage(
+                      image: AssetImage('assets/images/App_Icon.png'),
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [Colors.white, AppTheme.primary],
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                  ).createShader(bounds),
+                  child: const Text(
+                    'SPORTIFY',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2.0,
+                      fontSize: 20,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 24),
+          // Tabs in the middle
+          Expanded(
+            child: TabBar(
+              controller: _tabController,
+              indicator: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppTheme.primary,
+                    width: 3,
+                  ),
+                ),
+              ),
+              indicatorSize: TabBarIndicatorSize.label,
+              labelColor: AppTheme.primary,
+              unselectedLabelColor: AppTheme.textFaint,
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                letterSpacing: 1.0,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.normal,
+                fontSize: 14,
+              ),
+              tabs: const [
+                Tab(text: "LOBBY"),
+                Tab(text: "ROOM"),
+                Tab(text: "FRIENDS"),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Profile Button
+          _buildProfileButton(context),
+        ],
       ),
     );
   }
@@ -136,29 +224,43 @@ class _HomeScreenState extends State<HomeScreen>
           : Stream.value(null),
       builder: (context, snapshot) {
         final userModel = snapshot.data;
-        final displayName = userModel?.displayName ?? currentUser?.displayName ?? currentUser?.email?.split('@')[0] ?? 'U';
+        final displayName = userModel?.displayName ??
+            currentUser?.displayName ??
+            currentUser?.email?.split('@')[0] ??
+            'U';
         final profilePicUrl = userModel?.profilePicUrl ?? currentUser?.photoURL;
-        final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
+        final initial =
+            displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
 
         return PopupMenuButton<String>(
           offset: const Offset(0, 50),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
           ),
-          color: const Color(0xFF1a1a2e),
+          color: AppTheme.inputFill,
           child: Container(
             width: 40,
             height: 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
+              border: Border.all(
+                color: AppTheme.primary.withValues(alpha: 0.5),
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primary.withValues(alpha: 0.3),
+                  blurRadius: 10,
+                  spreadRadius: 0,
+                ),
+              ],
               image: profilePicUrl != null
                   ? DecorationImage(
                       image: NetworkImage(profilePicUrl),
                       fit: BoxFit.cover,
                     )
                   : null,
-              color: profilePicUrl == null ? Colors.redAccent : null,
+              color: profilePicUrl == null ? AppTheme.primary : null,
             ),
             child: profilePicUrl == null
                 ? Center(
@@ -178,11 +280,11 @@ class _HomeScreenState extends State<HomeScreen>
               value: 'manage',
               child: Row(
                 children: [
-                  Icon(Icons.settings, color: Colors.white, size: 20),
+                  Icon(Icons.settings, color: AppTheme.textMain, size: 20),
                   SizedBox(width: 12),
                   Text(
                     'Manage account',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.textMain),
                   ),
                 ],
               ),
@@ -222,32 +324,44 @@ class _HomeScreenState extends State<HomeScreen>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF1a1a2e),
+          backgroundColor: AppTheme.inputFill,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: AppTheme.primary.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
           title: const Text(
             'Sign Out',
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(color: AppTheme.textMain),
           ),
           content: const Text(
             'Are you sure you want to sign out?',
-            style: TextStyle(color: Colors.white70),
+            style: TextStyle(color: AppTheme.textFaint),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text(
                 'Cancel',
-                style: TextStyle(color: Colors.white70),
+                style: TextStyle(color: AppTheme.textFaint),
               ),
             ),
-            TextButton(
+            NeonButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                final authService = Provider.of<AuthService>(context, listen: false);
+                final authService =
+                    Provider.of<AuthService>(context, listen: false);
                 authService.signOut();
               },
+              backgroundColor: Colors.redAccent,
+              glowColor: Colors.redAccent,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: const Text(
                 'Sign Out',
-                style: TextStyle(color: Colors.redAccent),
+                style:
+                    TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -259,9 +373,26 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildLobbyView(BuildContext context) {
     return Row(
       children: [
-        // Left Sidebar - Favorite Teams
-        _buildFavoriteTeamsSidebar(context),
-        
+        // Left Sidebar - Favorite Teams (Collapsible)
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          width: _isSidebarOpen ? 250 : 0,
+          clipBehavior: Clip.hardEdge, // Prevent overflow during animation
+          color: AppTheme
+              .bgStart, // Maintain background during animation to prevent black flash
+          child: _isSidebarOpen
+              ? LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Only show content if width is sufficient (above 150px to prevent overflow)
+                    if (constraints.maxWidth < 150) {
+                      return const SizedBox.shrink();
+                    }
+                    return _buildFavoriteTeamsSidebar(context);
+                  },
+                )
+              : const SizedBox.shrink(),
+        ),
         // Main Content Area
         Expanded(
           child: _buildMainContentArea(context),
@@ -277,162 +408,241 @@ class _HomeScreenState extends State<HomeScreen>
     final sportsApiService = SportsApiService();
 
     return Container(
-      width: 250,
+      width: 250, // Fixed width to prevent overflow
       decoration: BoxDecoration(
-        color: const Color(0xFF16213e),
+        color: AppTheme.bgStart,
         border: Border(
           right: BorderSide(
-            color: Colors.white.withValues(alpha: 0.1),
+            color: AppTheme.primary.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
       ),
-      child: StreamBuilder<UserModel?>(
-        stream: currentUser != null
-            ? profileService.getUserProfileStream(currentUser.uid)
-            : Stream.value(null),
-        builder: (context, userSnapshot) {
-          final userModel = userSnapshot.data;
-          final favoriteTeams = userModel?.favoriteTeams ?? [];
-
-          if (favoriteTeams.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.favorite_border,
-                      size: 48,
-                      color: Colors.white.withValues(alpha: 0.5),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No favorite teams yet',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Add teams in your profile',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+      child: Column(
+        children: [
+          // Sidebar Header with Close Button
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.inputFill,
+              border: Border(
+                bottom: BorderSide(
+                  color: AppTheme.primary.withValues(alpha: 0.2),
+                  width: 1,
                 ),
               ),
-            );
-          }
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text(
-                  'Favorite Teams',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.favorite,
+                  color: AppTheme.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Favorite Teams',
+                    style: const TextStyle(
+                      color: AppTheme.textMain,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                 ),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  itemCount: favoriteTeams.length,
-                  itemBuilder: (context, index) {
-                    final teamName = favoriteTeams[index];
-                    return FutureBuilder<Team?>(
-                      future: sportsApiService.getTeamByName(teamName),
-                      builder: (context, snapshot) {
-                        final team = snapshot.data;
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.1),
+                IconButton(
+                  icon: const Icon(
+                    Icons.chevron_left,
+                    color: AppTheme.textFaint,
+                    size: 20,
+                  ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 40,
+                    minHeight: 40,
+                  ),
+                  onPressed: () {
+                    // Preserve scroll position before closing sidebar
+                    final currentScrollPosition = _scrollController.hasClients
+                        ? _scrollController.offset
+                        : 0.0;
+                    setState(() {
+                      _isSidebarOpen = false;
+                    });
+                    // Restore scroll position after rebuild
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (_scrollController.hasClients) {
+                        _scrollController.jumpTo(currentScrollPosition);
+                      }
+                    });
+                  },
+                  tooltip: 'Hide sidebar',
+                ),
+              ],
+            ),
+          ),
+          // Sidebar Content - Scrollable
+          Expanded(
+            child: currentUser == null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        'Please sign in',
+                        style: TextStyle(
+                          color: AppTheme.textFaint.withValues(alpha: 0.7),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  )
+                : StreamBuilder<UserModel?>(
+                    stream:
+                        profileService.getUserProfileStream(currentUser.uid),
+                    builder: (context, userSnapshot) {
+                      final userModel = userSnapshot.data;
+                      final favoriteTeams = userModel?.favoriteTeams ?? [];
+
+                      if (favoriteTeams.isEmpty) {
+                        return Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.favorite_border,
+                                  size: 48,
+                                  color:
+                                      AppTheme.textFaint.withValues(alpha: 0.5),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No favorite teams yet',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: AppTheme.textFaint
+                                        .withValues(alpha: 0.7),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Add teams in your profile',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: AppTheme.textFaint
+                                        .withValues(alpha: 0.5),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          child: ListTile(
-                            dense: true,
-                            leading: team?.logoUrl != null
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(4),
-                                    child: Image.network(
-                                      team!.logoUrl!,
-                                      width: 40,
-                                      height: 40,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) {
-                                        return Container(
+                        );
+                      }
+
+                      return ListView.builder(
+                        physics:
+                            const BouncingScrollPhysics(), // Enable smooth vertical scrolling
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 8),
+                        itemCount: favoriteTeams.length,
+                        itemBuilder: (context, index) {
+                          final teamName = favoriteTeams[index];
+                          return FutureBuilder<Team?>(
+                            future: sportsApiService.getTeamByName(teamName),
+                            builder: (context, snapshot) {
+                              final team = snapshot.data;
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.inputFill,
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color:
+                                        AppTheme.primary.withValues(alpha: 0.2),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: ListTile(
+                                  dense: true,
+                                  leading: team?.logoUrl != null
+                                      ? ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                          child: Image.network(
+                                            team!.logoUrl!,
+                                            width: 40,
+                                            height: 40,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                              return Container(
+                                                width: 40,
+                                                height: 40,
+                                                decoration: BoxDecoration(
+                                                  color: AppTheme.primary
+                                                      .withValues(alpha: 0.2),
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                                child: const Icon(
+                                                  Icons.sports,
+                                                  color: AppTheme.primary,
+                                                  size: 20,
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        )
+                                      : Container(
                                           width: 40,
                                           height: 40,
                                           decoration: BoxDecoration(
-                                            color: Colors.redAccent.withValues(alpha: 0.2),
-                                            borderRadius: BorderRadius.circular(4),
+                                            color: AppTheme.primary
+                                                .withValues(alpha: 0.2),
+                                            borderRadius:
+                                                BorderRadius.circular(4),
                                           ),
                                           child: const Icon(
                                             Icons.sports,
-                                            color: Colors.redAccent,
+                                            color: AppTheme.primary,
                                             size: 20,
                                           ),
-                                        );
-                                      },
+                                        ),
+                                  title: Text(
+                                    team?.name ?? teamName,
+                                    style: const TextStyle(
+                                      color: AppTheme.textMain,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                  )
-                                : Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: Colors.redAccent.withValues(alpha: 0.2),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: const Icon(
-                                      Icons.sports,
-                                      color: Colors.redAccent,
-                                      size: 20,
-                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                            title: Text(
-                              team?.name ?? teamName,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            subtitle: team?.sport != null
-                                ? Text(
-                                    team!.sport!,
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.6),
-                                      fontSize: 12,
-                                    ),
-                                  )
-                                : null,
-                          ),
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-            ],
-          );
-        },
+                                  subtitle: team?.sport != null
+                                      ? Text(
+                                          _normalizeSportName(team!.sport!),
+                                          style: TextStyle(
+                                            color: AppTheme.textFaint
+                                                .withValues(alpha: 0.6),
+                                            fontSize: 12,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -441,402 +651,649 @@ class _HomeScreenState extends State<HomeScreen>
     final firestoreService = Provider.of<FirestoreService>(context);
     final sportsApiService = SportsApiService();
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Top Sports and Teams Section
-          FutureBuilder<List<Sport>>(
-            future: sportsApiService.getTopSports(limit: 5),
-            builder: (context, sportsSnapshot) {
-              if (sportsSnapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: CircularProgressIndicator(
-                      color: Colors.redAccent,
-                    ),
-                  ),
-                );
-              }
-
-              if (sportsSnapshot.hasError || !sportsSnapshot.hasData) {
-                return const SizedBox.shrink();
-              }
-
-              final sports = sportsSnapshot.data!;
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: sports.map((sport) {
-                  return _buildSportSection(context, sport, sportsApiService);
-                }).toList(),
-              );
-            },
-          ),
-
-          const SizedBox(height: 32),
-
-          // Existing Rooms Section
-          const Text(
-            'Active Rooms',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          StreamBuilder<List<Room>>(
-            stream: firestoreService.getPublicRoomsStream(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: CircularProgressIndicator(
-                      color: Colors.redAccent,
-                    ),
-                  ),
-                );
-              }
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    'Error: ${snapshot.error}',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                );
-              }
-              if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1),
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'No public rooms available.\nGo to the "Room" tab to create one!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white.withValues(alpha: 0.7),
-                      ),
-                    ),
-                  ),
-                );
-              }
-
-              final rooms = snapshot.data!;
-
-              return ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: rooms.length,
-                itemBuilder: (context, index) {
-                  final room = rooms[index];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFF1a1a2e),
-                          Color(0xFF16213e),
-                          Color(0xFF0f3460),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.1),
-                        width: 1,
-                      ),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.all(16),
-                      leading: Container(
-                        width: 50,
-                        height: 50,
+    return Stack(
+      children: [
+        // Main Content
+        SingleChildScrollView(
+          controller: _scrollController, // Preserve scroll position
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Show Sidebar Button (when closed) - positioned at top
+              if (!_isSidebarOpen)
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.redAccent.withValues(alpha: 0.2),
+                          color: AppTheme.inputFill,
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppTheme.primary.withValues(alpha: 0.3),
+                            width: 1,
+                          ),
                         ),
                         child: const Icon(
-                          Icons.play_circle_outline,
-                          color: Colors.redAccent,
+                          Icons.chevron_right,
+                          color: AppTheme.primary,
                         ),
                       ),
-                      title: Text(
-                        room.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      subtitle: Text(
-                        room.description ?? 'No description',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
-                        ),
-                      ),
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${room.participants.length} 👤',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => RoomScreen(room: room),
-                          ),
-                        );
+                      onPressed: () {
+                        // Preserve scroll position before opening sidebar
+                        final currentScrollPosition =
+                            _scrollController.hasClients
+                                ? _scrollController.offset
+                                : 0.0;
+                        setState(() {
+                          _isSidebarOpen = true;
+                        });
+                        // Restore scroll position after rebuild
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (_scrollController.hasClients) {
+                            _scrollController.jumpTo(currentScrollPosition);
+                          }
+                        });
                       },
+                      tooltip: 'Show favorite teams',
                     ),
+                  ),
+                ),
+              // Featured Room Banner (Netflix-style)
+              _buildFeaturedBanner(context, firestoreService),
+
+              const SizedBox(height: 24),
+
+              // Sports Sections (Horizontal Scrolling Rows)
+              FutureBuilder<List<Sport>>(
+                future: sportsApiService.getTopSports(limit: 5),
+                builder: (context, sportsSnapshot) {
+                  if (sportsSnapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: CircularProgressIndicator(
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (sportsSnapshot.hasError || !sportsSnapshot.hasData) {
+                    return const SizedBox.shrink();
+                  }
+
+                  final sports = sportsSnapshot.data!;
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: sports.map((sport) {
+                      return _buildSportRow(context, sport, sportsApiService);
+                    }).toList(),
                   );
                 },
-              );
-            },
+              ),
+
+              const SizedBox(height: 24),
+
+              // Active Rooms Section
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'Active Rooms',
+                  style: TextStyle(
+                    color: AppTheme.textMain,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              StreamBuilder<List<Room>>(
+                stream: firestoreService.getPublicRoomsStream(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: CircularProgressIndicator(
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error: ${snapshot.error}',
+                        style: const TextStyle(color: AppTheme.textFaint),
+                      ),
+                    );
+                  }
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: AppTheme.inputFill,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: AppTheme.primary.withValues(alpha: 0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'No public rooms available.\nGo to the "Room" tab to create one!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: AppTheme.textFaint,
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final rooms = snapshot.data!;
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: rooms.length,
+                    itemBuilder: (context, index) {
+                      final room = rooms[index];
+                      return _buildRoomCard(context, room);
+                    },
+                  );
+                },
+              ),
+
+              const SizedBox(height: 32),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildSportSection(BuildContext context, Sport sport, SportsApiService apiService) {
-    // Get sport icon based on sport name
-    IconData sportIcon = _getSportIcon(sport.name);
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Sport Card
-          Container(
-            padding: const EdgeInsets.all(16),
+  Widget _buildFeaturedBanner(
+      BuildContext context, FirestoreService firestoreService) {
+    return StreamBuilder<List<Room>>(
+      stream: firestoreService.getPublicRoomsStream(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return Container(
+            height: 400,
+            margin: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFF1a1a2e),
-                  Color(0xFF16213e),
-                  Color(0xFF0f3460),
+                  Color(0xFF1A0A2E), // Dark purple (opaque)
+                  AppTheme.bgStart,
                 ],
               ),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.1),
+                color: AppTheme.primary.withValues(alpha: 0.3),
                 width: 1,
               ),
             ),
-            child: Row(
-              children: [
-                // Sport Logo/Icon
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: Colors.redAccent.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.sports_esports,
+                    size: 64,
+                    color: AppTheme.primary.withValues(alpha: 0.5),
                   ),
-                  child: sport.logoUrl != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            sport.logoUrl!,
-                            width: 60,
-                            height: 60,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Icon(
-                                sportIcon,
-                                color: Colors.redAccent,
-                                size: 32,
-                              );
-                            },
-                          ),
-                        )
-                      : Icon(
-                          sportIcon,
-                          color: Colors.redAccent,
-                          size: 32,
-                        ),
-                ),
-                const SizedBox(width: 16),
-                // Sport Name
-                Expanded(
-                  child: Text(
-                    sport.name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
+                  const SizedBox(height: 16),
+                  const Text(
+                    'No Featured Rooms',
+                    style: TextStyle(
+                      color: AppTheme.textFaint,
+                      fontSize: 18,
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+          );
+        }
+
+        final featuredRoom = snapshot.data!.first;
+        return Container(
+          height: 400,
+          margin: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primary.withValues(alpha: 0.3),
+                blurRadius: 30,
+                spreadRadius: 5,
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          FutureBuilder<List<Team>>(
-            future: apiService.getTopTeamsBySport(sport.name, limit: 5),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SizedBox(
-                  height: 120,
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.redAccent,
-                      strokeWidth: 2,
-                    ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Background Gradient (Opaque to block floating icons)
+              Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF1A0A2E), // Dark purple (opaque)
+                      AppTheme.bgStart,
+                      AppTheme.bgEnd,
+                    ],
                   ),
-                );
-              }
-
-              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                return Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              // Content Overlay
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppTheme.primary.withValues(alpha: 0.5),
+                    width: 2,
                   ),
-                  child: Center(
-                    child: Text(
-                      'Loading teams for ${sport.name}...',
+                ),
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    const Text(
+                      'FEATURED',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: AppTheme.primary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2.0,
                       ),
                     ),
-                  ),
-                );
-              }
-
-              final teams = snapshot.data!;
-
-              return SizedBox(
-                height: 140,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: teams.length,
-                  itemBuilder: (context, index) {
-                    final team = teams[index];
-                    return Container(
-                      width: 160,
-                      margin: const EdgeInsets.only(right: 12),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFF1a1a2e),
-                            Color(0xFF16213e),
-                          ],
+                    const SizedBox(height: 8),
+                    Text(
+                      featuredRoom.name,
+                      style: const TextStyle(
+                        color: AppTheme.textMain,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.0,
+                      ),
+                    ),
+                    if (featuredRoom.description != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        featuredRoom.description!,
+                        style: const TextStyle(
+                          color: AppTheme.textFaint,
+                          fontSize: 14,
                         ),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.1),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        NeonButton(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    RoomScreen(room: featuredRoom),
+                              ),
+                            );
+                          },
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 14,
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.play_arrow, color: Colors.white),
+                              SizedBox(width: 8),
+                              Text(
+                                'JOIN ROOM',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        NeonButton(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    RoomScreen(room: featuredRoom),
+                              ),
+                            );
+                          },
+                          isOutlined: true,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 14,
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.info_outline, color: AppTheme.primary),
+                              SizedBox(width: 8),
+                              Text(
+                                'MORE INFO',
+                                style: TextStyle(
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSportRow(
+      BuildContext context, Sport sport, SportsApiService apiService) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Icon(
+                _getSportIcon(sport.name),
+                color: AppTheme.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                sport.name.toUpperCase(),
+                style: const TextStyle(
+                  color: AppTheme.textMain,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        FutureBuilder<List<Team>>(
+          future: apiService.getTopTeamsBySport(sport.name, limit: 10),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 180,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: AppTheme.primary,
+                    strokeWidth: 2,
+                  ),
+                ),
+              );
+            }
+
+            if (snapshot.hasError ||
+                !snapshot.hasData ||
+                snapshot.data!.isEmpty) {
+              return const SizedBox.shrink();
+            }
+
+            final teams = snapshot.data!;
+
+            return SizedBox(
+              height: 200,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                physics:
+                    const BouncingScrollPhysics(), // Smooth horizontal scrolling
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: teams.length,
+                itemBuilder: (context, index) {
+                  final team = teams[index];
+                  return _buildTeamCard(context, team);
+                },
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _buildTeamCard(BuildContext context, Team team) {
+    // Make cards more rectangular - wider when sidebar is closed
+    // Use AnimatedContainer to smoothly transition card width
+    const cardHeight = 180.0; // Fixed height for rectangular shape
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      width: _isSidebarOpen ? 160.0 : 200.0,
+      height: cardHeight,
+      margin: const EdgeInsets.only(right: 12),
+      child: NeonButton(
+        onPressed: () {
+          // Navigate to team details or create room with team
+        },
+        isOutlined: true,
+        backgroundColor:
+            AppTheme.bgStart, // Opaque background to block floating icons
+        padding: EdgeInsets.zero,
+        borderRadius: 12,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Display team logo if available, otherwise show placeholder
+            if (team.logoUrl != null && team.logoUrl!.isNotEmpty)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  team.logoUrl!,
+                  width: 70,
+                  height: 70,
+                  fit: BoxFit.contain, // Changed to contain to show full logo
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                              : null,
+                          strokeWidth: 2,
+                          color: AppTheme.primary,
                         ),
                       ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (team.logoUrl != null)
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                team.logoUrl!,
-                                width: 60,
-                                height: 60,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    width: 60,
-                                    height: 60,
-                                    decoration: BoxDecoration(
-                                      color: Colors.redAccent.withValues(alpha: 0.2),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: const Icon(
-                                      Icons.sports,
-                                      color: Colors.redAccent,
-                                      size: 30,
-                                    ),
-                                  );
-                                },
-                              ),
-                            )
-                          else
-                            Container(
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                color: Colors.redAccent.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.sports,
-                                color: Colors.redAccent,
-                                size: 30,
-                              ),
-                            ),
-                          const SizedBox(height: 8),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Text(
-                              team.name,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (team.country != null)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Text(
-                                team.country!,
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.6),
-                                  fontSize: 11,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
-                        ],
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.sports,
+                        color: AppTheme.primary,
+                        size: 35,
                       ),
                     );
                   },
                 ),
-              );
-            },
-          ),
-        ],
+              )
+            else
+              Container(
+                width: 70,
+                height: 70,
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.sports,
+                  color: AppTheme.primary,
+                  size: 35,
+                ),
+              ),
+            const SizedBox(height: 10),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                team.name,
+                style: const TextStyle(
+                  color: AppTheme.textMain,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (team.country != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                team.country!,
+                style: const TextStyle(
+                  color: AppTheme.textFaint,
+                  fontSize: 11,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 
-  /// Get appropriate icon for each sport
+  Widget _buildRoomCard(BuildContext context, Room room) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: NeonButton(
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => RoomScreen(room: room),
+            ),
+          );
+        },
+        isOutlined: true,
+        padding: const EdgeInsets.all(16),
+        borderRadius: 16,
+        child: Row(
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppTheme.primary.withValues(alpha: 0.5),
+                  width: 1,
+                ),
+              ),
+              child: const Icon(
+                Icons.play_circle_outline,
+                color: AppTheme.primary,
+                size: 32,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    room.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textMain,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    room.description ?? 'No description',
+                    style: const TextStyle(
+                      color: AppTheme.textFaint,
+                      fontSize: 13,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppTheme.primary.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                '${room.participants.length} 👤',
+                style: const TextStyle(
+                  color: AppTheme.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   IconData _getSportIcon(String sportName) {
     switch (sportName.toLowerCase()) {
       case 'football':
@@ -851,6 +1308,27 @@ class _HomeScreenState extends State<HomeScreen>
         return Icons.sports_rugby;
       default:
         return Icons.sports;
+    }
+  }
+
+  /// Normalize sport names for consistent display
+  /// Converts API names (like "Soccer") to display names (like "Football")
+  String _normalizeSportName(String sportName) {
+    switch (sportName.toLowerCase()) {
+      case 'soccer':
+        return 'Football';
+      case 'motorsport':
+        return 'F1';
+      case 'football':
+      case 'cricket':
+      case 'basketball':
+      case 'f1':
+      case 'rugby':
+        // Capitalize first letter
+        return sportName[0].toUpperCase() +
+            sportName.substring(1).toLowerCase();
+      default:
+        return sportName;
     }
   }
 }
