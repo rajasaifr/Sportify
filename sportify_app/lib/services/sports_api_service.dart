@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sportify_app/models/sport_model.dart';
 import 'package:sportify_app/models/team_model.dart';
 import 'package:sportify_app/utils/logger.dart';
@@ -65,7 +66,16 @@ class SportsApiService {
         // Filter and take top teams
         final teams = teamsList
             .take(limit)
-            .map((team) => Team.fromJson(team))
+            .map((team) {
+              final teamObj = Team.fromJson(team);
+              // Log logo status
+              if (teamObj.logoUrl != null && teamObj.logoUrl!.isNotEmpty) {
+                Logger.info('Team ${teamObj.name} has logo from API: ${teamObj.logoUrl}', tag: 'SportsApiService');
+              } else {
+                Logger.warning('Team ${teamObj.name} has NO logo URL from API - will check Firestore', tag: 'SportsApiService');
+              }
+              return teamObj;
+            })
             .toList();
         
         Logger.info('Fetched ${teams.length} teams for $sportName (API: $apiSportName)', tag: 'SportsApiService');
@@ -75,7 +85,9 @@ class SportsApiService {
           return await _getFallbackTeams(sportName, limit);
         }
         
-        return teams;
+        // Enhance teams with logos from fallback if missing
+        final enhancedTeams = await _enhanceTeamsWithLogos(teams, sportName);
+        return enhancedTeams;
       } else {
         Logger.error('Failed to fetch teams: ${response.statusCode}', tag: 'SportsApiService');
         return await _getFallbackTeams(sportName, limit);
@@ -111,7 +123,8 @@ class SportsApiService {
     // Try alternative endpoints or return default teams
     final defaultTeams = _getDefaultTeamsForSport(sportName);
     if (defaultTeams.isNotEmpty) {
-      return defaultTeams.take(limit).toList();
+      // Enhance with logos from Firestore
+      return await _enhanceTeamsWithLogos(defaultTeams.take(limit).toList(), sportName);
     }
     return [];
   }
@@ -176,12 +189,123 @@ class SportsApiService {
         final List<dynamic> teamsList = data['teams'] ?? [];
         
         if (teamsList.isNotEmpty) {
-          return Team.fromJson(teamsList[0]);
+          var team = Team.fromJson(teamsList[0]);
+          // Enhance with Firestore logo if missing
+          if (team.logoUrl == null || team.logoUrl!.isEmpty) {
+            final logoUrl = await _getTeamLogoFromFirestore(teamName);
+            if (logoUrl != null) {
+              team = Team(
+                id: team.id,
+                name: team.name,
+                logoUrl: logoUrl,
+                sport: team.sport,
+                country: team.country,
+                league: team.league,
+                description: team.description,
+              );
+            }
+          }
+          return team;
         }
       }
       return null;
     } catch (e) {
       Logger.error('Error fetching team: $teamName', error: e, tag: 'SportsApiService');
+      return null;
+    }
+  }
+
+  /// Enhances teams with logos from Firestore if missing
+  Future<List<Team>> _enhanceTeamsWithLogos(List<Team> teams, String sportName) async {
+    final enhancedTeams = <Team>[];
+    for (var team in teams) {
+      if (team.logoUrl == null || team.logoUrl!.isEmpty) {
+        // Try to get logo from Firestore
+        final logoUrl = await _getTeamLogoFromFirestore(team.name);
+        if (logoUrl != null) {
+          enhancedTeams.add(Team(
+            id: team.id,
+            name: team.name,
+            logoUrl: logoUrl,
+            sport: team.sport,
+            country: team.country,
+            league: team.league,
+            description: team.description,
+          ));
+        } else {
+          enhancedTeams.add(team);
+        }
+      } else {
+        enhancedTeams.add(team);
+      }
+    }
+    return enhancedTeams;
+  }
+
+  /// Fetches team logo URL from Firestore teams collection
+  Future<String?> _getTeamLogoFromFirestore(String teamName) async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+      
+      // Check if teams collection exists
+      final collectionRef = firestore.collection('teams');
+      final collectionSnapshot = await collectionRef.limit(1).get();
+      
+      if (collectionSnapshot.docs.isEmpty) {
+        Logger.warning('Teams collection does not exist or is empty in Firestore', tag: 'SportsApiService');
+        return null;
+      }
+      
+      Logger.info('Searching Firestore for team: $teamName', tag: 'SportsApiService');
+      
+      // Try exact match first
+      var querySnapshot = await collectionRef
+          .where('name', isEqualTo: teamName)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isEmpty) {
+        Logger.info('No exact match found for "$teamName", trying case-insensitive search', tag: 'SportsApiService');
+        // Try case-insensitive search
+        querySnapshot = await collectionRef.get();
+        
+        Logger.info('Found ${querySnapshot.docs.length} teams in Firestore collection', tag: 'SportsApiService');
+        
+        for (var doc in querySnapshot.docs) {
+          final data = doc.data();
+          final name = data['name']?.toString() ?? '';
+          final nameLower = name.toLowerCase();
+          
+          Logger.debug('Checking Firestore team: "$name" against "$teamName"', tag: 'SportsApiService');
+          
+          if (nameLower == teamName.toLowerCase()) {
+            final logoUrl = data['logoUrl']?.toString();
+            Logger.info('Matched team "$name" - logoUrl: ${logoUrl ?? "NULL"}', tag: 'SportsApiService');
+            
+            if (logoUrl != null && logoUrl.isNotEmpty) {
+              Logger.info('✓ Found logo for $teamName in Firestore: $logoUrl', tag: 'SportsApiService');
+              return logoUrl;
+            } else {
+              Logger.warning('Team "$name" found in Firestore but logoUrl is empty or null', tag: 'SportsApiService');
+            }
+          }
+        }
+        Logger.warning('No matching team found in Firestore for: $teamName', tag: 'SportsApiService');
+      } else {
+        final data = querySnapshot.docs.first.data();
+        final logoUrl = data['logoUrl']?.toString();
+        Logger.info('Found exact match for "$teamName" - logoUrl: ${logoUrl ?? "NULL"}', tag: 'SportsApiService');
+        
+        if (logoUrl != null && logoUrl.isNotEmpty) {
+          Logger.info('✓ Found logo for $teamName in Firestore: $logoUrl', tag: 'SportsApiService');
+          return logoUrl;
+        } else {
+          Logger.warning('Team "$teamName" found in Firestore but logoUrl is empty or null', tag: 'SportsApiService');
+        }
+      }
+      return null;
+    } catch (e) {
+      Logger.error('Error fetching team logo from Firestore: $teamName', error: e, tag: 'SportsApiService');
       return null;
     }
   }

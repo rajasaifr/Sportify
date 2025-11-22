@@ -303,7 +303,7 @@ class FirestoreService implements IFirestoreService {
       }).toList();
     });
   }
-  
+
   @override
   Stream<List<Friendship>> getFriendshipsForUser(String userId) {
     // Use repository for data access (Abstraction)
