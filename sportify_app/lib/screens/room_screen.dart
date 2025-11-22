@@ -10,6 +10,8 @@ import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/utils/logger.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+// Required for web platform iframe embedding
+// ignore: avoid_web_libraries_in_flutter, deprecated_member_use
 import 'dart:html' as html;
 import 'dart:ui_web' as ui_web;
 import 'dart:async';
@@ -554,6 +556,8 @@ class _RoomScreenState extends State<RoomScreen> {
       Logger.error("Error loading current video", error: e, tag: 'RoomScreen');
     }
 
+    if (!mounted) return;
+    
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -649,7 +653,7 @@ class _RoomScreenState extends State<RoomScreen> {
                       
                       final videos = snapshot.data!;
                       return DropdownButtonFormField<VideoContent>(
-                        value: selectedVideo,
+                        initialValue: selectedVideo,
                         hint: Text(
                           'Select a video',
                           style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
@@ -704,7 +708,7 @@ class _RoomScreenState extends State<RoomScreen> {
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<RoomType>(
-                    value: selectedRoomType,
+                    initialValue: selectedRoomType,
                     dropdownColor: const Color(0xFF1a1a2e),
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
@@ -1284,8 +1288,8 @@ class _RoomScreenState extends State<RoomScreen> {
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF6C5CE7),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF6C5CE7),
                           shape: BoxShape.circle,
                         ),
                         child: IconButton(

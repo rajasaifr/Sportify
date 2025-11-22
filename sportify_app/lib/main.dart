@@ -37,7 +37,8 @@ void main() async {
             } catch (e) {
               // If AuthService creation fails, still create it
               // The lazy initialization will handle Google Sign-In errors
-              Logger.warning("AuthService creation had issues", error: e, tag: 'AuthService');
+              Logger.warning("AuthService creation had issues",
+                  error: e, tag: 'AuthService');
               return AuthService();
             }
           },
@@ -72,7 +73,7 @@ class MyApp extends StatelessWidget {
       title: 'Sportify',
 
       // Applying the Theme (SRP)
-      theme: AppTheme.stadiumNightTheme, // <-- ERROR HERE
+      theme: AppTheme.stadiumNightTheme,
 
       debugShowCheckedModeBanner: false,
       home: const AuthWrapper(),

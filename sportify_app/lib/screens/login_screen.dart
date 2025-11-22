@@ -46,7 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
           password: password,
           displayName: name,
         );
-        
+
         if (user != null) {
           Logger.info('Signup successful', tag: 'LoginScreen');
           _showSnackBar('Account created! Welcome.');
@@ -63,7 +63,8 @@ class _LoginScreenState extends State<LoginScreen> {
         Logger.info('Login successful', tag: 'LoginScreen');
       }
     } on FirebaseAuthException catch (e) {
-      Logger.error('FirebaseAuthException: ${e.code}', error: e, tag: 'LoginScreen');
+      Logger.error('FirebaseAuthException: ${e.code}',
+          error: e, tag: 'LoginScreen');
       String message = 'An error occurred';
       switch (e.code) {
         case 'invalid-credential':
@@ -73,13 +74,15 @@ class _LoginScreenState extends State<LoginScreen> {
           message = 'Invalid email or password. Please try again.';
           break;
         case 'email-already-in-use':
-          message = 'The account already exists for that email. Please sign in instead.';
+          message =
+              'The account already exists for that email. Please sign in instead.';
           break;
         case 'invalid-email':
           message = 'The email address is not valid.';
           break;
         case 'weak-password':
-          message = 'The password provided is too weak. Please use at least 6 characters.';
+          message =
+              'The password provided is too weak. Please use at least 6 characters.';
           break;
         case 'operation-not-allowed':
           message = 'Email/password accounts are not enabled.';
@@ -89,7 +92,8 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       _showSnackBar(message);
     } catch (e, stackTrace) {
-      Logger.error('Unexpected error during ${_isSignup ? "signup" : "login"}', error: e, stackTrace: stackTrace, tag: 'LoginScreen');
+      Logger.error('Unexpected error during ${_isSignup ? "signup" : "login"}',
+          error: e, stackTrace: stackTrace, tag: 'LoginScreen');
       _showSnackBar('Error: ${e.toString()}');
     } finally {
       if (mounted) setState(() => _isEmailLoading = false);
@@ -101,8 +105,9 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isGoogleLoading = true);
     try {
       final result = await authService.signInWithGoogle();
-      if (result != null && _isSignup)
+      if (result != null && _isSignup) {
         _showSnackBar('Account created successfully!');
+      }
     } catch (e) {
       _showSnackBar('Google Sign-In failed.');
     } finally {
@@ -146,10 +151,10 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Stack(
             children: [
               // 1. FLOATING EMITTER (Background Layer)
-              Positioned.fill(
+              const Positioned.fill(
                 child: FloatingEmitter(
                   // --- JPG ASSET PATHS ---
-                  assetPaths: const [
+                  assetPaths: [
                     'assets/images/floating_icons/basketball.jpg',
                     'assets/images/floating_icons/bat.jpg',
                     'assets/images/floating_icons/glove.jpg',
@@ -157,8 +162,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     'assets/images/floating_icons/racket.jpg',
                     'assets/images/floating_icons/soccer_ball.jpg',
                   ],
-                  emissionInterval: const Duration(milliseconds: 500),
-                  particleDuration: const Duration(seconds: 20),
+                  emissionInterval: Duration(milliseconds: 500),
+                  particleDuration: Duration(seconds: 20),
                   particleSizeMin: 25.0, // Smaller icons
                   particleSizeMax: 45.0, // Smaller icons
                   maxParticles: 16, // Slightly increased
@@ -178,12 +183,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: const Color(0xFF0A0A0A), // Card color
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.08),
+                        color: Colors.white.withValues(alpha: 0.08),
                         width: 1,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.black.withValues(alpha: 0.5),
                           blurRadius: 40,
                           offset: const Offset(0, 20),
                         ),
@@ -203,13 +208,14 @@ class _LoginScreenState extends State<LoginScreen> {
                               color: Colors.black,
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppTheme.primary.withOpacity(0.5),
+                                  color:
+                                      AppTheme.primary.withValues(alpha: 0.5),
                                   blurRadius: 30,
                                   spreadRadius: 2,
                                 ),
                               ],
                               border: Border.all(
-                                color: AppTheme.primary.withOpacity(0.6),
+                                color: AppTheme.primary.withValues(alpha: 0.6),
                                 width: 2,
                               ),
                               image: const DecorationImage(
@@ -317,18 +323,21 @@ class _LoginScreenState extends State<LoginScreen> {
                           children: [
                             Expanded(
                                 child: Divider(
-                                    color: Colors.white.withOpacity(0.1))),
+                                    color:
+                                        Colors.white.withValues(alpha: 0.1))),
                             Padding(
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 12),
                               child: Text("OR",
                                   style: TextStyle(
-                                      color: Colors.white.withOpacity(0.2),
+                                      color:
+                                          Colors.white.withValues(alpha: 0.2),
                                       fontSize: 10)),
                             ),
                             Expanded(
                                 child: Divider(
-                                    color: Colors.white.withOpacity(0.1))),
+                                    color:
+                                        Colors.white.withValues(alpha: 0.1))),
                           ],
                         ),
                         const SizedBox(height: 24),
@@ -354,7 +363,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                             style: OutlinedButton.styleFrom(
                               side: BorderSide(
-                                  color: Colors.white.withOpacity(0.1)),
+                                  color: Colors.white.withValues(alpha: 0.1)),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16)),
                             ),
@@ -414,36 +423,38 @@ class _LoginScreenState extends State<LoginScreen> {
       style: const TextStyle(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
-        floatingLabelBehavior: FloatingLabelBehavior.auto, // Label floats to top when focused/filled
-        labelStyle: TextStyle(
+        floatingLabelBehavior: FloatingLabelBehavior
+            .auto, // Label floats to top when focused/filled
+        labelStyle: const TextStyle(
           color: AppTheme.textFaint,
           fontSize: 14,
         ),
-        floatingLabelStyle: TextStyle(
+        floatingLabelStyle: const TextStyle(
           color: AppTheme.primary,
           fontSize: 12,
         ),
         prefixIcon: Icon(icon, size: 20, color: AppTheme.textFaint),
         filled: true,
         fillColor: const Color(0xFF0F0F0F),
-        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        contentPadding:
+            const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             width: 1,
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(
-            color: Colors.white.withOpacity(0.1),
+            color: Colors.white.withValues(alpha: 0.1),
             width: 1,
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(
+          borderSide: const BorderSide(
             color: AppTheme.primary,
             width: 2,
           ),
@@ -474,4 +485,3 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 }
-
