@@ -24,16 +24,29 @@ class RoomRepository {
     }
   }
 
-  /// Get public rooms stream
+  /// Get public rooms stream, sorted by rating (descending)
   Stream<List<Room>> getPublicRoomsStream() {
     return _firestore
         .collection('rooms')
         .where('roomType', isEqualTo: RoomType.public.name)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs
-          .map((doc) => Room.fromJson(doc.data()))
+      final rooms = snapshot.docs
+          .map((doc) {
+            final data = doc.data();
+            data['roomId'] = data['roomId'] ?? doc.id;
+            return Room.fromJson(data);
+          })
           .toList();
+      
+      // Sort by averageRating descending (null ratings go to the end)
+      rooms.sort((a, b) {
+        final aRating = a.averageRating ?? 0.0;
+        final bRating = b.averageRating ?? 0.0;
+        return bRating.compareTo(aRating);
+      });
+      
+      return rooms;
     });
   }
 
@@ -104,6 +117,67 @@ class RoomRepository {
       await batch.commit();
     } catch (e) {
       throw Exception('Failed to delete room: $e');
+    }
+  }
+
+  /// Search public rooms by name (case-insensitive)
+  Future<List<Room>> searchPublicRooms(String query) async {
+    try {
+      if (query.isEmpty) {
+        // Return all public rooms sorted by rating
+        final snapshot = await _firestore
+            .collection('rooms')
+            .where('roomType', isEqualTo: RoomType.public.name)
+            .get();
+        
+        final rooms = snapshot.docs
+            .map((doc) {
+              final data = doc.data();
+              data['roomId'] = data['roomId'] ?? doc.id;
+              return Room.fromJson(data);
+            })
+            .toList();
+        
+        // Sort by rating descending
+        rooms.sort((a, b) {
+          final aRating = a.averageRating ?? 0.0;
+          final bRating = b.averageRating ?? 0.0;
+          return bRating.compareTo(aRating);
+        });
+        
+        return rooms;
+      }
+
+      // Get all public rooms and filter by name
+      final snapshot = await _firestore
+          .collection('rooms')
+          .where('roomType', isEqualTo: RoomType.public.name)
+          .get();
+
+      final queryLower = query.toLowerCase();
+      final rooms = snapshot.docs
+          .map((doc) {
+            final data = doc.data();
+            data['roomId'] = data['roomId'] ?? doc.id;
+            return Room.fromJson(data);
+          })
+          .where((room) {
+            final name = room.name.toLowerCase();
+            final description = (room.description ?? '').toLowerCase();
+            return name.contains(queryLower) || description.contains(queryLower);
+          })
+          .toList();
+
+      // Sort by rating descending
+      rooms.sort((a, b) {
+        final aRating = a.averageRating ?? 0.0;
+        final bRating = b.averageRating ?? 0.0;
+        return bRating.compareTo(aRating);
+      });
+
+      return rooms;
+    } catch (e) {
+      throw Exception('Failed to search rooms: $e');
     }
   }
 }

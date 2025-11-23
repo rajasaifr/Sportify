@@ -43,11 +43,16 @@ class _RoomScreenState extends State<RoomScreen> {
   html.IFrameElement? _youtubeIframe;
   bool _isSyncing = false;
 
+  // Rating state
+  int? _userRating;
+  bool _isLoadingRating = false;
+
   @override
   void initState() {
     super.initState();
     _loadVideoContent();
     _initializeSynchronization();
+    _loadUserRating();
   }
 
   void _initializeSynchronization() {
@@ -281,6 +286,84 @@ class _RoomScreenState extends State<RoomScreen> {
     _playbackUpdateTimer?.cancel();
     _messageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadUserRating() async {
+    if (_currentRoom.roomType != RoomType.public) return;
+    
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final currentUserId = authService.currentUser?.uid;
+    if (currentUserId == null) return;
+
+    final firestoreService = Provider.of<FirestoreService>(context, listen: false);
+    final rating = await firestoreService.getUserRoomRating(_currentRoom.roomId, currentUserId);
+    
+    if (mounted) {
+      setState(() {
+        _userRating = rating;
+      });
+    }
+  }
+
+  Future<void> _submitRating(int stars) async {
+    if (_currentRoom.roomType != RoomType.public) return;
+    
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final currentUserId = authService.currentUser?.uid;
+    if (currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please sign in to rate rooms'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoadingRating = true;
+    });
+
+    try {
+      final firestoreService = Provider.of<FirestoreService>(context, listen: false);
+      await firestoreService.submitRoomRating(
+        roomId: _currentRoom.roomId,
+        userId: currentUserId,
+        stars: stars,
+      );
+
+      // Reload room to get updated rating
+      final updatedRoom = await firestoreService.getRoomById(_currentRoom.roomId);
+      if (updatedRoom != null && mounted) {
+        setState(() {
+          _currentRoom = updatedRoom;
+          _userRating = stars;
+          _isLoadingRating = false;
+        });
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Rating submitted: $stars stars'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingRating = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to submit rating: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _loadVideoContent() async {
@@ -1284,6 +1367,87 @@ class _RoomScreenState extends State<RoomScreen> {
                                       ),
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                  // Room Rating Display and Input (only for public rooms)
+                                  if (_currentRoom.roomType == RoomType.public) ...[
+                                    const SizedBox(height: 16),
+                                    Row(
+                                      children: [
+                                        // Display average rating
+                                        if (_currentRoom.averageRating != null) ...[
+                                          Icon(
+                                            Icons.star,
+                                            color: Colors.amber,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            _currentRoom.averageRating!.toStringAsFixed(1),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '(${_currentRoom.totalRatings} ${_currentRoom.totalRatings == 1 ? 'rating' : 'ratings'})',
+                                            style: TextStyle(
+                                              color: Colors.white.withValues(alpha: 0.6),
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ] else ...[
+                                          Text(
+                                            'No ratings yet',
+                                            style: TextStyle(
+                                              color: Colors.white.withValues(alpha: 0.6),
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    // Star rating input
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'Rate this room: ',
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(alpha: 0.8),
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        ...List.generate(5, (index) {
+                                          final starValue = index + 1;
+                                          final isSelected = _userRating != null && starValue <= _userRating!;
+                                          return GestureDetector(
+                                            onTap: _isLoadingRating ? null : () => _submitRating(starValue),
+                                            child: Padding(
+                                              padding: const EdgeInsets.symmetric(horizontal: 2),
+                                              child: Icon(
+                                                isSelected ? Icons.star : Icons.star_border,
+                                                color: isSelected ? Colors.amber : Colors.white.withValues(alpha: 0.5),
+                                                size: 28,
+                                              ),
+                                            ),
+                                          );
+                                        }),
+                                        if (_isLoadingRating) ...[
+                                          const SizedBox(width: 8),
+                                          const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
                                     ),
                                   ],
                                 ],
