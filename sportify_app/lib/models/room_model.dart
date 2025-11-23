@@ -20,6 +20,10 @@ class Room {
   final String? team2Name;
   final bool? competitiveFeatures;
 
+  // Rating fields
+  final double? averageRating; // Average rating (0.0 to 5.0)
+  final int totalRatings; // Total number of ratings
+
   Room({
     required this.roomId,
     required this.name,
@@ -34,6 +38,8 @@ class Room {
     this.team1Name,
     this.team2Name,
     this.competitiveFeatures,
+    this.averageRating,
+    this.totalRatings = 0,
   });
 
   /// Converts this Room instance to a JSON Map.
@@ -52,6 +58,8 @@ class Room {
       'team1Name': team1Name,
       'team2Name': team2Name,
       'competitiveFeatures': competitiveFeatures,
+      'averageRating': averageRating,
+      'totalRatings': totalRatings,
     };
   }
 
@@ -79,6 +87,12 @@ class Room {
       team1Name: json['team1Name'],
       team2Name: json['team2Name'],
       competitiveFeatures: json['competitiveFeatures'],
+      averageRating: json['averageRating'] != null
+          ? (json['averageRating'] is double
+              ? json['averageRating']
+              : (json['averageRating'] as num).toDouble())
+          : null,
+      totalRatings: json['totalRatings'] ?? 0,
     );
   }
 }

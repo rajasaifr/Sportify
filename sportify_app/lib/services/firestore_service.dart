@@ -728,4 +728,129 @@ class FirestoreService implements IFirestoreService {
       return sports;
     });
   }
+
+  // --- Room Rating Functions ---
+
+  /// Submits a rating for a room (1-5 stars)
+  /// If user has already rated, updates their existing rating
+  Future<void> submitRoomRating({
+    required String roomId,
+    required String userId,
+    required int stars, // 1-5
+  }) async {
+    try {
+      if (stars < 1 || stars > 5) {
+        throw Exception('Rating must be between 1 and 5');
+      }
+
+      // Check if user has already rated this room
+      final existingRatingDoc = await _firestore
+          .collection('rooms')
+          .doc(roomId)
+          .collection('ratings')
+          .doc(userId)
+          .get();
+
+      final int previousRating;
+      if (existingRatingDoc.exists) {
+        previousRating = existingRatingDoc.data()?['stars'] ?? 0;
+      } else {
+        previousRating = 0;
+      }
+
+      // Save the rating
+      await _firestore
+          .collection('rooms')
+          .doc(roomId)
+          .collection('ratings')
+          .doc(userId)
+          .set({
+        'stars': stars,
+        'userId': userId,
+        'roomId': roomId,
+        'createdAt': DateTime.now().toIso8601String(),
+        'updatedAt': DateTime.now().toIso8601String(),
+      }, SetOptions(merge: true));
+
+      // Update room's average rating
+      await _updateRoomAverageRating(roomId, previousRating, stars);
+    } catch (e) {
+      Logger.error("Error submitting room rating", error: e, tag: 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Updates the room's average rating based on all ratings
+  Future<void> _updateRoomAverageRating(
+    String roomId,
+    int previousRating,
+    int newRating,
+  ) async {
+    try {
+      // Get all ratings for this room
+      final ratingsSnapshot = await _firestore
+          .collection('rooms')
+          .doc(roomId)
+          .collection('ratings')
+          .get();
+
+      if (ratingsSnapshot.docs.isEmpty) {
+        // No ratings, set to null
+        await _firestore.collection('rooms').doc(roomId).update({
+          'averageRating': null,
+          'totalRatings': 0,
+        });
+        return;
+      }
+
+      // Calculate average
+      int totalStars = 0;
+      for (var doc in ratingsSnapshot.docs) {
+        final stars = doc.data()['stars'] as int? ?? 0;
+        totalStars += stars;
+      }
+
+      final totalRatings = ratingsSnapshot.docs.length;
+      final averageRating = totalStars / totalRatings;
+
+      // Update room document
+      await _firestore.collection('rooms').doc(roomId).update({
+        'averageRating': averageRating,
+        'totalRatings': totalRatings,
+      });
+    } catch (e) {
+      Logger.error("Error updating room average rating", error: e, tag: 'FirestoreService');
+      rethrow;
+    }
+  }
+
+  /// Gets a user's rating for a room
+  Future<int?> getUserRoomRating(String roomId, String userId) async {
+    try {
+      final ratingDoc = await _firestore
+          .collection('rooms')
+          .doc(roomId)
+          .collection('ratings')
+          .doc(userId)
+          .get();
+
+      if (ratingDoc.exists) {
+        return ratingDoc.data()?['stars'] as int?;
+      }
+      return null;
+    } catch (e) {
+      Logger.error("Error getting user room rating", error: e, tag: 'FirestoreService');
+      return null;
+    }
+  }
+
+  /// Search public rooms by name, sorted by rating (descending)
+  Future<List<Room>> searchPublicRooms(String query) async {
+    try {
+      return await _roomRepository.searchPublicRooms(query);
+    } catch (e) {
+      Logger.error("Error searching rooms", error: e, tag: 'FirestoreService');
+      return [];
+    }
+  }
 }

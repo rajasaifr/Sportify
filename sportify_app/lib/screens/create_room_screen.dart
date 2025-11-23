@@ -17,10 +17,12 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _searchController = TextEditingController();
 
   RoomType _selectedRoomType = RoomType.public;
   VideoContent? _selectedVideo;
   bool _isLoading = false;
+  String _searchQuery = '';
 
   late Future<List<VideoContent>> _videosFuture;
 
@@ -41,6 +43,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -698,17 +701,67 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Active Rooms',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          children: [
+            const Text(
+              'Active Rooms',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const Spacer(),
+            // Search bar
+            SizedBox(
+              width: 250,
+              child: TextField(
+                controller: _searchController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Search rooms...',
+                  hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                  prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, color: Colors.white70),
+                          onPressed: () {
+                            setState(() {
+                              _searchController.clear();
+                              _searchQuery = '';
+                            });
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.1),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Color(0xFF6C5CE7), width: 2),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value.trim();
+                  });
+                },
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
-        StreamBuilder<List<Room>>(
-          stream: firestoreService.getAllRoomsStream(),
+        _searchQuery.isEmpty
+            ? StreamBuilder<List<Room>>(
+                stream: firestoreService.getPublicRoomsStream(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
@@ -753,111 +806,203 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
 
             final rooms = snapshot.data!;
 
+            final filteredRooms = rooms.where((room) => 
+              room.roomType == RoomType.public
+            ).toList();
+
             return ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: rooms.length,
+              itemCount: filteredRooms.length,
               itemBuilder: (context, index) {
-                final room = rooms[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF1a1a2e),
-                        Color(0xFF16213e),
-                        Color(0xFF0f3460),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      width: 1,
-                    ),
-                  ),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(16),
-                    leading: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: room.roomType == RoomType.private
-                            ? Colors.orange.withValues(alpha: 0.2)
-                            : Colors.redAccent.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        room.roomType == RoomType.private
-                            ? Icons.lock
-                            : Icons.play_circle_outline,
-                        color: room.roomType == RoomType.private
-                            ? Colors.orange
-                            : Colors.redAccent,
-                      ),
-                    ),
-                    title: Text(
-                      room.name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    subtitle: Text(
-                      room.description ?? 'No description',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
-                      ),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '${room.participants.length} 👤',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        // Delete button for host's rooms
-                        Builder(
-                          builder: (context) {
-                            final authService = Provider.of<AuthService>(context, listen: false);
-                            final currentUserId = authService.currentUser?.uid;
-                            final isHost = currentUserId == room.hostId;
-                            
-                            if (isHost) {
-                              return IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
-                                onPressed: () => _showDeleteRoomDialog(context, room),
-                                tooltip: 'Delete Room',
-                                padding: const EdgeInsets.only(left: 8),
-                                constraints: const BoxConstraints(),
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
-                        ),
-                      ],
-                    ),
-                    onTap: () {
-                      _navigateToRoomWithVerification(room);
-                    },
-                  ),
-                );
+                final room = filteredRooms[index];
+                return _buildRoomCard(context, room, firestoreService);
               },
             );
           },
-        ),
+        )
+            : FutureBuilder<List<Room>>(
+                future: firestoreService.searchPublicRooms(_searchQuery),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: CircularProgressIndicator(
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error: ${snapshot.error}',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    );
+                  }
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.1),
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'No rooms found matching "$_searchQuery"',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final rooms = snapshot.data!;
+
+                  return ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: rooms.length,
+                    itemBuilder: (context, index) {
+                      final room = rooms[index];
+                      return _buildRoomCard(context, room, firestoreService);
+                    },
+                  );
+                },
+              ),
       ],
+    );
+  }
+
+  Widget _buildRoomCard(BuildContext context, Room room, FirestoreService firestoreService) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1a1a2e),
+            Color(0xFF16213e),
+            Color(0xFF0f3460),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+          width: 1,
+        ),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: room.roomType == RoomType.private
+                ? Colors.orange.withValues(alpha: 0.2)
+                : Colors.redAccent.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            room.roomType == RoomType.private
+                ? Icons.lock
+                : Icons.play_circle_outline,
+            color: room.roomType == RoomType.private
+                ? Colors.orange
+                : Colors.redAccent,
+          ),
+        ),
+        title: Text(
+          room.name,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              room.description ?? 'No description',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
+            ),
+            // Rating display (only for public rooms)
+            if (room.roomType == RoomType.public && room.averageRating != null) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.star,
+                    color: Colors.amber,
+                    size: 14,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${room.averageRating!.toStringAsFixed(1)} (${room.totalRatings} ${room.totalRatings == 1 ? 'rating' : 'ratings'})',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${room.participants.length} 👤',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            // Delete button for host's rooms
+            Builder(
+              builder: (context) {
+                final authService = Provider.of<AuthService>(context, listen: false);
+                final currentUserId = authService.currentUser?.uid;
+                final isHost = currentUserId == room.hostId;
+                
+                if (isHost) {
+                  return IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                    onPressed: () => _showDeleteRoomDialog(context, room),
+                    tooltip: 'Delete Room',
+                    padding: const EdgeInsets.only(left: 8),
+                    constraints: const BoxConstraints(),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ],
+        ),
+        onTap: () {
+          _navigateToRoomWithVerification(room);
+        },
+      ),
     );
   }
 }
