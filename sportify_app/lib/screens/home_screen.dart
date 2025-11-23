@@ -8,7 +8,7 @@ import 'package:sportify_app/models/video_content_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/profile_service.dart';
 import 'package:sportify_app/services/firestore_service.dart';
-import 'package:sportify_app/screens/create_room_screen.dart';
+import 'package:sportify_app/screens/rooms_screen.dart';
 import 'package:sportify_app/screens/profile_screen.dart';
 import 'package:sportify_app/screens/friends_screen.dart';
 import 'package:sportify_app/screens/room_screen.dart';
@@ -101,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen>
                     controller: _tabController,
                     children: [
                       _buildLobbyView(context),
-                      const CreateRoomScreen(),
+                      const RoomsScreen(), // Changed from CreateRoomScreen to RoomsScreen
                       const FriendsScreen(),
                     ],
                   ),
@@ -204,7 +204,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               tabs: const [
                 Tab(text: "LOBBY"),
-                Tab(text: "ROOM"),
+                Tab(text: "ROOMS"), // Changed from "ROOM" to "ROOMS"
                 Tab(text: "FRIENDS"),
               ],
             ),
@@ -959,36 +959,6 @@ class _HomeScreenState extends State<HomeScreen>
                               ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                          // Rating display
-                          if (featuredRoom.averageRating != null) ...[
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.star,
-                                  color: Colors.amber,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  featuredRoom.averageRating!.toStringAsFixed(1),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '(${featuredRoom.totalRatings} ${featuredRoom.totalRatings == 1 ? 'rating' : 'ratings'})',
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.7),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
                             ),
                           ],
                           const SizedBox(height: 20),
