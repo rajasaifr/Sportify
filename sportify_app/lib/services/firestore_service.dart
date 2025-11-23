@@ -5,6 +5,8 @@ import 'package:sportify_app/models/user_model.dart';
 import 'package:sportify_app/models/friendship_model.dart';
 import 'package:sportify_app/models/message_model.dart';
 import 'package:sportify_app/models/playback_state_model.dart';
+import 'package:sportify_app/models/team_model.dart';
+import 'package:sportify_app/models/sport_model.dart';
 import 'package:sportify_app/services/interfaces/firestore_service_interface.dart';
 import 'package:sportify_app/repositories/user_repository.dart';
 import 'package:sportify_app/repositories/room_repository.dart';
@@ -513,6 +515,217 @@ class FirestoreService implements IFirestoreService {
         return PlaybackState.fromJson(snapshot.data()!);
       }
       return null;
+    });
+  }
+
+  // --- Team Functions ---
+
+  /// Gets teams from Firestore by sport
+  Future<List<Team>> getTeamsBySport(String sport, {int limit = 10}) async {
+    try {
+      QuerySnapshot snapshot;
+      
+      // Query teams collection filtered by sport
+      snapshot = await _firestore
+          .collection('teams')
+          .where('sport', isEqualTo: sport)
+          .limit(limit)
+          .get();
+
+      List<Team> teams = [];
+      for (var doc in snapshot.docs) {
+        try {
+          final data = doc.data() as Map<String, dynamic>;
+          // Add document ID if not present
+          if (!data.containsKey('id')) {
+            data['id'] = doc.id;
+          }
+          teams.add(Team.fromJson(data));
+        } catch (e) {
+          Logger.error("Error parsing team document ${doc.id}", error: e, tag: 'FirestoreService');
+        }
+      }
+
+      Logger.info("Fetched ${teams.length} teams for sport: $sport", tag: 'FirestoreService');
+      return teams;
+    } catch (e) {
+      Logger.error("Error fetching teams by sport: $sport", error: e, tag: 'FirestoreService');
+      return [];
+    }
+  }
+
+  /// Gets all teams from Firestore
+  Future<List<Team>> getAllTeams({int limit = 100}) async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection('teams')
+          .limit(limit)
+          .get();
+
+      List<Team> teams = [];
+      for (var doc in snapshot.docs) {
+        try {
+          final data = doc.data() as Map<String, dynamic>;
+          // Add document ID if not present
+          if (!data.containsKey('id')) {
+            data['id'] = doc.id;
+          }
+          teams.add(Team.fromJson(data));
+        } catch (e) {
+          Logger.error("Error parsing team document ${doc.id}", error: e, tag: 'FirestoreService');
+        }
+      }
+
+      Logger.info("Fetched ${teams.length} teams from Firestore", tag: 'FirestoreService');
+      return teams;
+    } catch (e) {
+      Logger.error("Error fetching all teams", error: e, tag: 'FirestoreService');
+      return [];
+    }
+  }
+
+  /// Gets a team by name from Firestore
+  Future<Team?> getTeamByName(String teamName) async {
+    try {
+      // Try exact match first
+      QuerySnapshot snapshot = await _firestore
+          .collection('teams')
+          .where('name', isEqualTo: teamName)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isEmpty) {
+        // Try case-insensitive search by getting all and filtering
+        final allTeams = await getAllTeams(limit: 500);
+        for (var team in allTeams) {
+          if (team.name.toLowerCase() == teamName.toLowerCase()) {
+            return team;
+          }
+        }
+        return null;
+      }
+
+      final doc = snapshot.docs.first;
+      final data = doc.data() as Map<String, dynamic>;
+      if (!data.containsKey('id')) {
+        data['id'] = doc.id;
+      }
+      return Team.fromJson(data);
+    } catch (e) {
+      Logger.error("Error fetching team by name: $teamName", error: e, tag: 'FirestoreService');
+      return null;
+    }
+  }
+
+  /// Gets teams stream for real-time updates
+  Stream<List<Team>> getTeamsBySportStream(String sport, {int limit = 10}) {
+    return _firestore
+        .collection('teams')
+        .where('sport', isEqualTo: sport)
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) {
+      List<Team> teams = [];
+      for (var doc in snapshot.docs) {
+        try {
+          final data = Map<String, dynamic>.from(doc.data() as Map);
+          if (!data.containsKey('id')) {
+            data['id'] = doc.id;
+          }
+          teams.add(Team.fromJson(data));
+        } catch (e) {
+          Logger.error("Error parsing team document ${doc.id}", error: e, tag: 'FirestoreService');
+        }
+      }
+      return teams;
+    });
+  }
+
+  // --- Sport Functions ---
+
+  /// Gets sports from Firestore
+  Future<List<Sport>> getSports({int limit = 10}) async {
+    try {
+      QuerySnapshot snapshot = await _firestore
+          .collection('sports')
+          .limit(limit)
+          .get();
+
+      List<Sport> sports = [];
+      for (var doc in snapshot.docs) {
+        try {
+          final data = Map<String, dynamic>.from(doc.data() as Map);
+          // Add document ID if not present
+          if (!data.containsKey('id')) {
+            data['id'] = doc.id;
+          }
+          sports.add(Sport.fromJson(data));
+        } catch (e) {
+          Logger.error("Error parsing sport document ${doc.id}", error: e, tag: 'FirestoreService');
+        }
+      }
+
+      Logger.info("Fetched ${sports.length} sports from Firestore", tag: 'FirestoreService');
+      return sports;
+    } catch (e) {
+      Logger.error("Error fetching sports", error: e, tag: 'FirestoreService');
+      return [];
+    }
+  }
+
+  /// Gets a sport by name from Firestore
+  Future<Sport?> getSportByName(String sportName) async {
+    try {
+      // Try exact match first
+      QuerySnapshot snapshot = await _firestore
+          .collection('sports')
+          .where('name', isEqualTo: sportName)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isEmpty) {
+        // Try case-insensitive search
+        final allSports = await getSports(limit: 100);
+        for (var sport in allSports) {
+          if (sport.name.toLowerCase() == sportName.toLowerCase()) {
+            return sport;
+          }
+        }
+        return null;
+      }
+
+      final doc = snapshot.docs.first;
+      final data = Map<String, dynamic>.from(doc.data() as Map);
+      if (!data.containsKey('id')) {
+        data['id'] = doc.id;
+      }
+      return Sport.fromJson(data);
+    } catch (e) {
+      Logger.error("Error fetching sport by name: $sportName", error: e, tag: 'FirestoreService');
+      return null;
+    }
+  }
+
+  /// Gets sports stream for real-time updates
+  Stream<List<Sport>> getSportsStream({int limit = 10}) {
+    return _firestore
+        .collection('sports')
+        .limit(limit)
+        .snapshots()
+        .map((snapshot) {
+      List<Sport> sports = [];
+      for (var doc in snapshot.docs) {
+        try {
+          final data = Map<String, dynamic>.from(doc.data() as Map);
+          if (!data.containsKey('id')) {
+            data['id'] = doc.id;
+          }
+          sports.add(Sport.fromJson(data));
+        } catch (e) {
+          Logger.error("Error parsing sport document ${doc.id}", error: e, tag: 'FirestoreService');
+        }
+      }
+      return sports;
     });
   }
 }
