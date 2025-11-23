@@ -7,7 +7,9 @@ import 'package:sportify_app/screens/create_room_screen.dart';
 import 'package:sportify_app/screens/room_screen.dart';
 
 class RoomsScreen extends StatefulWidget {
-  const RoomsScreen({super.key});
+  final String? filterByTeam; // Add optional team filter parameter
+  
+  const RoomsScreen({super.key, this.filterByTeam});
 
   @override
   State<RoomsScreen> createState() => _RoomsScreenState();
@@ -226,13 +228,26 @@ class _RoomsScreenState extends State<RoomsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1a1a2e),
+      appBar: widget.filterByTeam != null
+          ? AppBar(
+              backgroundColor: const Color(0xFF1a1a2e),
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              title: Text(
+                'Rooms for ${widget.filterByTeam}',
+                style: const TextStyle(color: Colors.white),
+              ),
+            )
+          : null,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Active Rooms Section
               _buildActiveRoomsSection(),
             ],
           ),
@@ -265,9 +280,11 @@ class _RoomsScreenState extends State<RoomsScreen> {
         children: [
           Row(
             children: [
-              const Text(
-                'Active Rooms',
-                style: TextStyle(
+              Text(
+                widget.filterByTeam != null
+                    ? 'Rooms for ${widget.filterByTeam}'
+                    : 'Active Rooms',
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -365,7 +382,9 @@ class _RoomsScreenState extends State<RoomsScreen> {
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
-                                  'No public rooms available.',
+                                  widget.filterByTeam != null
+                                      ? 'No rooms found for ${widget.filterByTeam}'
+                                      : 'No public rooms available.',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 16,
@@ -374,7 +393,9 @@ class _RoomsScreenState extends State<RoomsScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Create a room to get started!',
+                                  widget.filterByTeam != null
+                                      ? 'Create a room with this team!'
+                                      : 'Create a room to get started!',
                                   textAlign: TextAlign.center,
                                   style: TextStyle(
                                     fontSize: 14,
@@ -389,9 +410,67 @@ class _RoomsScreenState extends State<RoomsScreen> {
 
                       final rooms = snapshot.data!;
 
-                      final filteredRooms = rooms.where((room) => 
+                      // Filter by room type
+                      var filteredRooms = rooms.where((room) => 
                         room.roomType == RoomType.public
                       ).toList();
+
+                      // Filter by team if filterByTeam is provided
+                      if (widget.filterByTeam != null) {
+                        filteredRooms = filteredRooms.where((room) {
+                          final team1 = room.team1Name?.toLowerCase() ?? '';
+                          final team2 = room.team2Name?.toLowerCase() ?? '';
+                          final filterTeam = widget.filterByTeam!.toLowerCase();
+                          return team1 == filterTeam || team2 == filterTeam;
+                        }).toList();
+                      }
+
+                      if (filteredRooms.isEmpty) {
+                        return Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.1),
+                            ),
+                          ),
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.meeting_room_outlined,
+                                  size: 64,
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  widget.filterByTeam != null
+                                      ? 'No rooms found for ${widget.filterByTeam}'
+                                      : 'No public rooms available.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.white.withValues(alpha: 0.7),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  widget.filterByTeam != null
+                                      ? 'Create a room with this team!'
+                                      : 'Create a room to get started!',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.white.withValues(alpha: 0.5),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
 
                       return ListView.builder(
                         itemCount: filteredRooms.length,
@@ -446,7 +525,40 @@ class _RoomsScreenState extends State<RoomsScreen> {
                         );
                       }
 
-                      final rooms = snapshot.data!;
+                      var rooms = snapshot.data!;
+
+                      // Filter by team if filterByTeam is provided
+                      if (widget.filterByTeam != null) {
+                        rooms = rooms.where((room) {
+                          final team1 = room.team1Name?.toLowerCase() ?? '';
+                          final team2 = room.team2Name?.toLowerCase() ?? '';
+                          final filterTeam = widget.filterByTeam!.toLowerCase();
+                          return team1 == filterTeam || team2 == filterTeam;
+                        }).toList();
+                      }
+
+                      if (rooms.isEmpty) {
+                        return Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.1),
+                            ),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'No rooms found for ${widget.filterByTeam} matching "$_searchQuery"',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.white.withValues(alpha: 0.7),
+                              ),
+                            ),
+                          ),
+                        );
+                      }
 
                       return ListView.builder(
                         itemCount: rooms.length,
