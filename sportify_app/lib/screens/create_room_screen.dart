@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // <-- ADD THIS
+import 'package:provider/provider.dart';
 import 'package:sportify_app/models/room_model.dart';
 import 'package:sportify_app/models/video_content_model.dart';
+import 'package:sportify_app/models/team_model.dart';
+import 'package:sportify_app/models/sport_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/screens/room_screen.dart';
@@ -17,40 +19,73 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
-  final _searchController = TextEditingController();
 
   RoomType _selectedRoomType = RoomType.public;
   VideoContent? _selectedVideo;
+  Team? _selectedTeam1;
+  Team? _selectedTeam2;
+  Sport? _selectedSport;
   bool _isLoading = false;
-  String _searchQuery = '';
 
   late Future<List<VideoContent>> _videosFuture;
-
-  // We no longer create instances here
-  // final FirestoreService _firestoreService = FirestoreService();
-  // final AuthService _authService = AuthService();
+  late Future<List<Sport>> _sportsFuture;
+  Future<List<Team>>? _teamsFuture;
 
   @override
   void initState() {
     super.initState();
-    // Get the shared instance from Provider
     final firestoreService =
         Provider.of<FirestoreService>(context, listen: false);
     _videosFuture = firestoreService.getAvailableVideos();
+    _sportsFuture = firestoreService.getSports(limit: 100);
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _descriptionController.dispose();
-    _searchController.dispose();
     super.dispose();
+  }
+
+  void _onSportChanged(Sport? sport) {
+    setState(() {
+      _selectedSport = sport;
+      _selectedTeam1 = null;
+      _selectedTeam2 = null;
+      if (sport != null) {
+        final firestoreService =
+            Provider.of<FirestoreService>(context, listen: false);
+        _teamsFuture = firestoreService.getTeamsBySport(sport.name, limit: 100);
+      } else {
+        _teamsFuture = null;
+      }
+    });
+  }
+
+  void _onTeam1Changed(Team? team) {
+    setState(() {
+      _selectedTeam1 = team;
+      // If team1 and team2 are the same, clear team2
+      if (team != null && _selectedTeam2 != null && team.name == _selectedTeam2!.name) {
+        _selectedTeam2 = null;
+      }
+    });
+  }
+
+  void _onTeam2Changed(Team? team) {
+    setState(() {
+      _selectedTeam2 = team;
+      // If team1 and team2 are the same, clear team1
+      if (team != null && _selectedTeam1 != null && team.name == _selectedTeam1!.name) {
+        _selectedTeam1 = null;
+      }
+    });
   }
 
   Future<void> _submitCreateRoom() async {
     // 1. Validate the form
     if (!_formKey.currentState!.validate()) {
-      return; // Don't submit if form is invalid
+      return;
     }
 
     // 2. Validate that a video was selected
@@ -59,14 +94,28 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
       return;
     }
 
-    // --- THIS IS THE FIX ---
-    // Get shared services from Provider
+    // 3. Validate teams
+    if (_selectedTeam1 == null || _selectedTeam2 == null) {
+      _showErrorSnackBar('Please select both Team 1 and Team 2');
+      return;
+    }
+
+    // 4. Validate teams are from the same sport
+    if (_selectedTeam1!.sport != _selectedTeam2!.sport) {
+      _showErrorSnackBar('Both teams must belong to the same sport');
+      return;
+    }
+
+    // 5. Validate teams are not the same
+    if (_selectedTeam1!.name == _selectedTeam2!.name) {
+      _showErrorSnackBar('Team 1 and Team 2 must be different');
+      return;
+    }
+
     final authService = Provider.of<AuthService>(context, listen: false);
     final firestoreService =
         Provider.of<FirestoreService>(context, listen: false);
-    // --- END OF FIX ---
 
-    // 3. Get the current user's ID
     final hostId = authService.currentUser?.uid;
     if (hostId == null) {
       _showErrorSnackBar('Error: You are not logged in.');
@@ -76,37 +125,37 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 4. Call the createRoom function from our service
       String? newRoomId = await firestoreService.createRoom(
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim(),
         contentId: _selectedVideo!.contentId,
         hostId: hostId,
         roomType: _selectedRoomType,
+        team1Name: _selectedTeam1!.name,
+        team2Name: _selectedTeam2!.name,
       );
 
       if (newRoomId != null) {
-        // 5. Fetch the created room and navigate to RoomScreen
         if (mounted) {
           final createdRoom = await firestoreService.getRoomById(newRoomId);
           if (createdRoom != null && mounted) {
-            // Clear form fields before navigating
             _nameController.clear();
             _descriptionController.clear();
             setState(() {
               _selectedVideo = null;
               _selectedRoomType = RoomType.public;
+              _selectedTeam1 = null;
+              _selectedTeam2 = null;
+              _selectedSport = null;
+              _teamsFuture = null;
             });
             
-            // Navigate to RoomScreen with the newly created room (use push, not pushReplacement)
-            // This way, back button will return to CreateRoomScreen (Room tab)
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (context) => RoomScreen(room: createdRoom),
               ),
             );
           } else if (mounted) {
-            // If room fetch fails, just pop back
             Navigator.of(context).pop();
             _showErrorSnackBar('Room created but could not load it.');
           }
@@ -341,7 +390,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1a1a2e), // Match container gradient start color
+      backgroundColor: const Color(0xFF1a1a2e),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1a1a2e),
         elevation: 0,
@@ -357,12 +406,6 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Active Rooms Section
-              _buildActiveRoomsSection(),
-              
-              const SizedBox(height: 32),
-              
-              // Create Room Form
               Center(
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: 420),
@@ -393,159 +436,510 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                    const Text(
-                      'Create New Room',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 32),
-
-                    // --- ROOM NAME ---
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Room Name',
+                        const Text(
+                          'Create New Room',
                           style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
+                          textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _nameController,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            hintText: 'Enter room name',
-                            hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
-                            filled: true,
-                            fillColor: Colors.white.withValues(alpha: 0.1),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: purpleButton, width: 2),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 16,
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Please enter a room name';
-                            }
-                            return null;
-                          },
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
+                        const SizedBox(height: 32),
 
-                    // --- ROOM DESCRIPTION ---
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Description (Optional)',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.9),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _descriptionController,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            hintText: 'Enter description',
-                            hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
-                            filled: true,
-                            fillColor: Colors.white.withValues(alpha: 0.1),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: purpleButton, width: 2),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 16,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // --- VIDEO SELECTOR ---
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Select Video',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.9),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        FutureBuilder<List<VideoContent>>(
-                          future: _videosFuture,
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
-                              return const Center(
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                ),
-                              );
-                            }
-                            if (snapshot.hasError) {
-                              return Center(
-                                child: Text(
-                                  'Error: ${snapshot.error}',
-                                  style: const TextStyle(color: Colors.white),
-                                ),
-                              );
-                            }
-                            if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                              return const Center(
-                                child: Text(
-                                  'No videos found in database. Please add a video to the "videos" collection.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                              );
-                            }
-
-                            final videos = snapshot.data!;
-                            return DropdownButtonFormField<VideoContent>(
-                              // ignore: deprecated_member_use
-                              value: _selectedVideo,
-                              hint: Text(
-                                'Select a video',
-                                style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                        // --- ROOM NAME ---
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Room Name',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.9),
                               ),
-                              isExpanded: true,
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _nameController,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                hintText: 'Enter room name',
+                                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                                filled: true,
+                                fillColor: Colors.white.withValues(alpha: 0.1),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: purpleButton, width: 2),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 16,
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter a room name';
+                                }
+                                return null;
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        // --- ROOM DESCRIPTION ---
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Description (Optional)',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.9),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _descriptionController,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                hintText: 'Enter description',
+                                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                                filled: true,
+                                fillColor: Colors.white.withValues(alpha: 0.1),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: purpleButton, width: 2),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 16,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        // --- SPORT SELECTOR ---
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Select Sport',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.9),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            FutureBuilder<List<Sport>>(
+                              future: _sportsFuture,
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return const Center(
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                    ),
+                                  );
+                                }
+                                if (snapshot.hasError) {
+                                  return Center(
+                                    child: Text(
+                                      'Error: ${snapshot.error}',
+                                      style: const TextStyle(color: Colors.white),
+                                    ),
+                                  );
+                                }
+                                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                                  return const Center(
+                                    child: Text(
+                                      'No sports found in database.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                  );
+                                }
+
+                                final sports = snapshot.data!;
+                                return DropdownButtonFormField<Sport>(
+                                  // ignore: deprecated_member_use
+                                  value: _selectedSport,
+                                  hint: Text(
+                                    'Select a sport',
+                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                                  ),
+                                  isExpanded: true,
+                                  dropdownColor: containerGradient1,
+                                  style: const TextStyle(color: Colors.white),
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: Colors.white.withValues(alpha: 0.1),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: const BorderSide(color: purpleButton, width: 2),
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 16,
+                                    ),
+                                  ),
+                                  onChanged: _onSportChanged,
+                                  items: sports.map((sport) {
+                                    return DropdownMenuItem(
+                                      value: sport,
+                                      child: Text(
+                                        sport.name,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(color: Colors.white),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  validator: (value) =>
+                                      value == null ? 'Please select a sport' : null,
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        // --- TEAM SELECTION (Side by Side) ---
+                        if (_selectedSport != null) ...[
+                          Row(
+                            children: [
+                              // Team 1 Dropdown
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Team 1',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white.withValues(alpha: 0.9),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    FutureBuilder<List<Team>>(
+                                      future: _teamsFuture,
+                                      builder: (context, snapshot) {
+                                        if (snapshot.connectionState == ConnectionState.waiting) {
+                                          return const Center(
+                                            child: CircularProgressIndicator(
+                                              color: Colors.white,
+                                            ),
+                                          );
+                                        }
+                                        if (snapshot.hasError) {
+                                          return Center(
+                                            child: Text(
+                                              'Error: ${snapshot.error}',
+                                              style: const TextStyle(color: Colors.white, fontSize: 12),
+                                            ),
+                                          );
+                                        }
+                                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                                          return const Center(
+                                            child: Text(
+                                              'No teams found for this sport.',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(color: Colors.white, fontSize: 12),
+                                            ),
+                                          );
+                                        }
+
+                                        final teams = snapshot.data!;
+                                        return DropdownButtonFormField<Team>(
+                                          // ignore: deprecated_member_use
+                                          value: _selectedTeam1,
+                                          hint: Text(
+                                            'Select Team 1',
+                                            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 14),
+                                          ),
+                                          isExpanded: true,
+                                          dropdownColor: containerGradient1,
+                                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                                          decoration: InputDecoration(
+                                            filled: true,
+                                            fillColor: Colors.white.withValues(alpha: 0.1),
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                                            ),
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                                            ),
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: const BorderSide(color: purpleButton, width: 2),
+                                            ),
+                                            contentPadding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 12,
+                                            ),
+                                          ),
+                                          onChanged: _onTeam1Changed,
+                                          items: teams.map((team) {
+                                            return DropdownMenuItem(
+                                              value: team,
+                                              child: Text(
+                                                team.name,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(color: Colors.white, fontSize: 14),
+                                              ),
+                                            );
+                                          }).toList(),
+                                          validator: (value) =>
+                                              value == null ? 'Required' : null,
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              // Team 2 Dropdown
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Team 2',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white.withValues(alpha: 0.9),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    FutureBuilder<List<Team>>(
+                                      future: _teamsFuture,
+                                      builder: (context, snapshot) {
+                                        if (snapshot.connectionState == ConnectionState.waiting) {
+                                          return const Center(
+                                            child: CircularProgressIndicator(
+                                              color: Colors.white,
+                                            ),
+                                          );
+                                        }
+                                        if (snapshot.hasError) {
+                                          return Center(
+                                            child: Text(
+                                              'Error: ${snapshot.error}',
+                                              style: const TextStyle(color: Colors.white, fontSize: 12),
+                                            ),
+                                          );
+                                        }
+                                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                                          return const Center(
+                                            child: Text(
+                                              'No teams found for this sport.',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(color: Colors.white, fontSize: 12),
+                                            ),
+                                          );
+                                        }
+
+                                        final teams = snapshot.data!;
+                                        // Filter out team1 from team2 options
+                                        final availableTeams = teams.where((team) => 
+                                          _selectedTeam1 == null || team.name != _selectedTeam1!.name
+                                        ).toList();
+
+                                        return DropdownButtonFormField<Team>(
+                                          // ignore: deprecated_member_use
+                                          value: _selectedTeam2,
+                                          hint: Text(
+                                            'Select Team 2',
+                                            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 14),
+                                          ),
+                                          isExpanded: true,
+                                          dropdownColor: containerGradient1,
+                                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                                          decoration: InputDecoration(
+                                            filled: true,
+                                            fillColor: Colors.white.withValues(alpha: 0.1),
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                                            ),
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                                            ),
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(8),
+                                              borderSide: const BorderSide(color: purpleButton, width: 2),
+                                            ),
+                                            contentPadding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 12,
+                                            ),
+                                          ),
+                                          onChanged: _onTeam2Changed,
+                                          items: availableTeams.map((team) {
+                                            return DropdownMenuItem(
+                                              value: team,
+                                              child: Text(
+                                                team.name,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(color: Colors.white, fontSize: 14),
+                                              ),
+                                            );
+                                          }).toList(),
+                                          validator: (value) =>
+                                              value == null ? 'Required' : null,
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                        ],
+
+                        // --- VIDEO SELECTOR ---
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Select Video',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.9),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            FutureBuilder<List<VideoContent>>(
+                              future: _videosFuture,
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return const Center(
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                    ),
+                                  );
+                                }
+                                if (snapshot.hasError) {
+                                  return Center(
+                                    child: Text(
+                                      'Error: ${snapshot.error}',
+                                      style: const TextStyle(color: Colors.white),
+                                    ),
+                                  );
+                                }
+                                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                                  return const Center(
+                                    child: Text(
+                                      'No videos found in database. Please add a video to the "videos" collection.',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                  );
+                                }
+
+                                final videos = snapshot.data!;
+                                return DropdownButtonFormField<VideoContent>(
+                                  // ignore: deprecated_member_use
+                                  value: _selectedVideo,
+                                  hint: Text(
+                                    'Select a video',
+                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                                  ),
+                                  isExpanded: true,
+                                  dropdownColor: containerGradient1,
+                                  style: const TextStyle(color: Colors.white),
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: Colors.white.withValues(alpha: 0.1),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: const BorderSide(color: purpleButton, width: 2),
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 16,
+                                    ),
+                                  ),
+                                  onChanged: (video) {
+                                    setState(() => _selectedVideo = video);
+                                  },
+                                  items: videos.map((video) {
+                                    return DropdownMenuItem(
+                                      value: video,
+                                      child: Text(
+                                        video.title,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(color: Colors.white),
+                                      ),
+                                    );
+                                  }).toList(),
+                                  validator: (value) =>
+                                      value == null ? 'Please select a video' : null,
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        // --- ROOM TYPE SELECTOR ---
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Room Type',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white.withValues(alpha: 0.9),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<RoomType>(
+                              // ignore: deprecated_member_use
+                              value: _selectedRoomType,
                               dropdownColor: containerGradient1,
                               style: const TextStyle(color: Colors.white),
                               decoration: InputDecoration(
@@ -568,121 +962,60 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                                   vertical: 16,
                                 ),
                               ),
-                              onChanged: (video) {
-                                setState(() => _selectedVideo = video);
+                              onChanged: (type) {
+                                setState(() {
+                                  _selectedRoomType = type ?? RoomType.public;
+                                });
                               },
-                              items: videos.map((video) {
+                              items: RoomType.values.map((type) {
+                                String typeName =
+                                    type.name[0].toUpperCase() + type.name.substring(1);
                                 return DropdownMenuItem(
-                                  value: video,
+                                  value: type,
                                   child: Text(
-                                    video.title,
-                                    overflow: TextOverflow.ellipsis,
+                                    typeName,
                                     style: const TextStyle(color: Colors.white),
                                   ),
                                 );
                               }).toList(),
-                              validator: (value) =>
-                                  value == null ? 'Please select a video' : null,
-                            );
-                          },
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
 
-                    // --- ROOM TYPE SELECTOR ---
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Room Type',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white.withValues(alpha: 0.9),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<RoomType>(
-                          // ignore: deprecated_member_use
-                          value: _selectedRoomType,
-                          dropdownColor: containerGradient1,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.white.withValues(alpha: 0.1),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: purpleButton, width: 2),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 16,
-                            ),
-                          ),
-                          onChanged: (type) {
-                            setState(() {
-                              _selectedRoomType = type ?? RoomType.public;
-                            });
-                          },
-                          items: RoomType.values.map((type) {
-                            String typeName =
-                                type.name[0].toUpperCase() + type.name.substring(1);
-                            return DropdownMenuItem(
-                              value: type,
-                              child: Text(
-                                typeName,
-                                style: const TextStyle(color: Colors.white),
+                        const SizedBox(height: 32),
+
+                        // --- SUBMIT BUTTON ---
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: _isLoading ? null : _submitCreateRoom,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: purpleButton,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    ),
-
-
-                    const SizedBox(height: 32),
-
-                    // --- SUBMIT BUTTON ---
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _submitCreateRoom,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: purpleButton,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                              elevation: 0,
+                            ),
+                            child: _isLoading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text(
+                                    'Create Room',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                           ),
-                          elevation: 0,
                         ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text(
-                                'Create Room',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                      ),
-                    ),
                       ],
                     ),
                   ),
@@ -691,317 +1024,6 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildActiveRoomsSection() {
-    final firestoreService = Provider.of<FirestoreService>(context);
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Text(
-              'Active Rooms',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const Spacer(),
-            // Search bar
-            SizedBox(
-              width: 250,
-              child: TextField(
-                controller: _searchController,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Search rooms...',
-                  hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
-                  prefixIcon: const Icon(Icons.search, color: Colors.white70),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, color: Colors.white70),
-                          onPressed: () {
-                            setState(() {
-                              _searchController.clear();
-                              _searchQuery = '';
-                            });
-                          },
-                        )
-                      : null,
-                  filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.1),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF6C5CE7), width: 2),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value.trim();
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _searchQuery.isEmpty
-            ? StreamBuilder<List<Room>>(
-                stream: firestoreService.getPublicRoomsStream(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32.0),
-                  child: CircularProgressIndicator(
-                    color: Colors.redAccent,
-                  ),
-                ),
-              );
-            }
-            if (snapshot.hasError) {
-              return Center(
-                child: Text(
-                  'Error: ${snapshot.error}',
-                  style: const TextStyle(color: Colors.white),
-                ),
-              );
-            }
-            if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.1),
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    'No public rooms available.\nCreate a room below!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ),
-              );
-            }
-
-            final rooms = snapshot.data!;
-
-            final filteredRooms = rooms.where((room) => 
-              room.roomType == RoomType.public
-            ).toList();
-
-            return ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: filteredRooms.length,
-              itemBuilder: (context, index) {
-                final room = filteredRooms[index];
-                return _buildRoomCard(context, room, firestoreService);
-              },
-            );
-          },
-        )
-            : FutureBuilder<List<Room>>(
-                future: firestoreService.searchPublicRooms(_searchQuery),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(32.0),
-                        child: CircularProgressIndicator(
-                          color: Colors.redAccent,
-                        ),
-                      ),
-                    );
-                  }
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Error: ${snapshot.error}',
-                        style: const TextStyle(color: Colors.white),
-                      ),
-                    );
-                  }
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.1),
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'No rooms found matching "$_searchQuery"',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.white.withValues(alpha: 0.7),
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-
-                  final rooms = snapshot.data!;
-
-                  return ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: rooms.length,
-                    itemBuilder: (context, index) {
-                      final room = rooms[index];
-                      return _buildRoomCard(context, room, firestoreService);
-                    },
-                  );
-                },
-              ),
-      ],
-    );
-  }
-
-  Widget _buildRoomCard(BuildContext context, Room room, FirestoreService firestoreService) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1a1a2e),
-            Color(0xFF16213e),
-            Color(0xFF0f3460),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
-          width: 1,
-        ),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: room.roomType == RoomType.private
-                ? Colors.orange.withValues(alpha: 0.2)
-                : Colors.redAccent.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            room.roomType == RoomType.private
-                ? Icons.lock
-                : Icons.play_circle_outline,
-            color: room.roomType == RoomType.private
-                ? Colors.orange
-                : Colors.redAccent,
-          ),
-        ),
-        title: Text(
-          room.name,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              room.description ?? 'No description',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
-              ),
-            ),
-            // Rating display (only for public rooms)
-            if (room.roomType == RoomType.public && room.averageRating != null) ...[
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.star,
-                    color: Colors.amber,
-                    size: 14,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${room.averageRating!.toStringAsFixed(1)} (${room.totalRatings} ${room.totalRatings == 1 ? 'rating' : 'ratings'})',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                '${room.participants.length} 👤',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            // Delete button for host's rooms
-            Builder(
-              builder: (context) {
-                final authService = Provider.of<AuthService>(context, listen: false);
-                final currentUserId = authService.currentUser?.uid;
-                final isHost = currentUserId == room.hostId;
-                
-                if (isHost) {
-                  return IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
-                    onPressed: () => _showDeleteRoomDialog(context, room),
-                    tooltip: 'Delete Room',
-                    padding: const EdgeInsets.only(left: 8),
-                    constraints: const BoxConstraints(),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-          ],
-        ),
-        onTap: () {
-          _navigateToRoomWithVerification(room);
-        },
       ),
     );
   }

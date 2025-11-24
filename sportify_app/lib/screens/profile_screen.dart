@@ -9,8 +9,11 @@ import 'package:flutter/services.dart';
 // import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:sportify_app/models/user_model.dart';
+import 'package:sportify_app/models/sport_model.dart';
+import 'package:sportify_app/models/team_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/profile_service.dart';
+import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/theme/app_theme.dart';
 import 'package:sportify_app/widgets/floating_emitter.dart';
 
@@ -28,99 +31,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _displayNameController;
   late TextEditingController _bioController;
   List<String> _selectedTeams = [];
-  String? _selectedSport; // Track selected sport
+  String? _selectedSport; // Track selected sport name
   bool _isLoading = false;
   
-  // Map of sports to their teams
-  static const Map<String, List<String>> _sportsTeams = {
-    'Basketball': [
-      'Los Angeles Lakers',
-      'Golden State Warriors',
-      'Chicago Bulls',
-      'Boston Celtics',
-      'Miami Heat',
-      'Toronto Raptors',
-      'Milwaukee Bucks',
-      'Phoenix Suns',
-      'Denver Nuggets',
-      'Dallas Mavericks',
-      'Philadelphia 76ers',
-      'Brooklyn Nets',
-      'New York Knicks',
-      'Los Angeles Clippers',
-      'Portland Trail Blazers',
-    ],
-    'Soccer': [
-      'Real Madrid',
-      'FC Barcelona',
-      'Manchester United',
-      'Liverpool FC',
-      'Manchester City',
-      'Chelsea FC',
-      'Arsenal FC',
-      'Paris Saint-Germain',
-      'Bayern Munich',
-      'Juventus',
-      'AC Milan',
-      'Inter Milan',
-      'Atletico Madrid',
-      'Tottenham Hotspur',
-      'Borussia Dortmund',
-    ],
-    'Football': [
-      'Kansas City Chiefs',
-      'Buffalo Bills',
-      'Dallas Cowboys',
-      'Green Bay Packers',
-      'San Francisco 49ers',
-      'Pittsburgh Steelers',
-      'New England Patriots',
-      'Tampa Bay Buccaneers',
-      'Seattle Seahawks',
-      'Baltimore Ravens',
-      'Denver Broncos',
-      'Las Vegas Raiders',
-      'Miami Dolphins',
-      'New York Giants',
-      'Philadelphia Eagles',
-    ],
-    'Baseball': [
-      'New York Yankees',
-      'Boston Red Sox',
-      'Los Angeles Dodgers',
-      'Chicago Cubs',
-      'Houston Astros',
-      'Atlanta Braves',
-      'St. Louis Cardinals',
-      'San Francisco Giants',
-      'New York Mets',
-      'Philadelphia Phillies',
-      'Toronto Blue Jays',
-      'Seattle Mariners',
-      'Tampa Bay Rays',
-      'Minnesota Twins',
-      'Cleveland Guardians',
-    ],
-    'Hockey': [
-      'Toronto Maple Leafs',
-      'Montreal Canadiens',
-      'Boston Bruins',
-      'Chicago Blackhawks',
-      'Detroit Red Wings',
-      'Pittsburgh Penguins',
-      'Washington Capitals',
-      'Tampa Bay Lightning',
-      'Colorado Avalanche',
-      'Edmonton Oilers',
-      'Vancouver Canucks',
-      'New York Rangers',
-      'Los Angeles Kings',
-      'Vegas Golden Knights',
-      'New Jersey Devils',
-    ],
-  };
-  // Image selection disabled - these fields not used for now
-  // Uint8List? _selectedImageBytes;
+  // Database data
+  List<Sport> _availableSports = [];
+  List<Team> _availableTeams = [];
+  bool _isLoadingSports = false;
+  bool _isLoadingTeams = false;
+  
   String? _currentProfilePicUrl;
   // String? _pendingProfilePicUrl; // Track the URL we just uploaded
   // DateTime? _originalCreatedAt;
@@ -131,6 +50,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _displayNameController = TextEditingController();
     _bioController = TextEditingController();
     _loadCurrentUser();
+    _loadSports(); // Load sports from database
+  }
+
+  Future<void> _loadSports() async {
+    setState(() => _isLoadingSports = true);
+    try {
+      final firestoreService = Provider.of<FirestoreService>(context, listen: false);
+      final sports = await firestoreService.getSports(limit: 100);
+      if (mounted) {
+        setState(() {
+          _availableSports = sports;
+          _isLoadingSports = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingSports = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading sports: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _loadTeamsForSport(String sportName) async {
+    setState(() => _isLoadingTeams = true);
+    try {
+      final firestoreService = Provider.of<FirestoreService>(context, listen: false);
+      final teams = await firestoreService.getTeamsBySport(sportName, limit: 100);
+      if (mounted) {
+        setState(() {
+          _availableTeams = teams;
+          _isLoadingTeams = false;
+          // Remove teams that don't belong to the newly selected sport
+          _selectedTeams.removeWhere((teamName) {
+            return !teams.any((team) => team.name == teamName);
+          });
+          _onTeamsUpdated(_selectedTeams);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingTeams = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading teams: $e')),
+        );
+      }
+    }
   }
 
   void _loadCurrentUser() async {
@@ -147,8 +114,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _bioController.text = userProfile.bio ?? '';
             _selectedTeams = userProfile.favoriteTeams ?? [];
             _currentProfilePicUrl = userProfile.profilePicUrl;
-            // _originalCreatedAt = userProfile.createdAt; // Image upload disabled
           });
+          
+          // If user has favorite teams, try to determine the sport
+          if (_selectedTeams.isNotEmpty) {
+            // Try to find the sport by checking teams in database
+            _determineSportFromTeams();
+          }
         }
       }
     } catch (e) {
@@ -157,6 +129,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SnackBar(content: Text('Error loading profile: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _determineSportFromTeams() async {
+    if (_selectedTeams.isEmpty) return;
+    
+    try {
+      final firestoreService = Provider.of<FirestoreService>(context, listen: false);
+      // Get the first team to determine sport
+      final firstTeam = await firestoreService.getTeamByName(_selectedTeams.first);
+      if (firstTeam != null && firstTeam.sport != null && mounted) {
+        setState(() {
+          _selectedSport = firstTeam.sport;
+        });
+        // Load teams for this sport
+        await _loadTeamsForSport(firstTeam.sport!);
+      }
+    } catch (e) {
+      // Silently fail - user can manually select sport
     }
   }
 
@@ -918,7 +909,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        _buildSportDropdown(),
+        _buildSportSelection(),
         if (_selectedSport != null) ...[
           const SizedBox(height: 20),
           _buildTeamSelection(),
@@ -927,115 +918,158 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
   
-  Widget _buildSportDropdown() {
+  Widget _buildSportSelection() {
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: AppTheme.inputFill,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: _selectedSport != null
-              ? AppTheme.primary.withValues(alpha: 0.6)
+              ? AppTheme.primary
               : Colors.white.withValues(alpha: 0.1),
           width: 1,
         ),
       ),
-      child: DropdownButtonFormField<String>(
-        value: _selectedSport,
-        decoration: InputDecoration(
-          filled: true,
-          fillColor: Colors.transparent,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          hintText: 'Select a sport',
-          hintStyle: TextStyle(
-            color: AppTheme.textFaint.withValues(alpha: 0.6),
-            fontSize: 15,
-          ),
-          prefixIcon: Icon(
-            Icons.sports,
-            color: _selectedSport != null ? AppTheme.primary : AppTheme.textFaint,
-            size: 22,
-          ),
-        ),
-        dropdownColor: AppTheme.inputFill,
-        style: const TextStyle(
-          color: AppTheme.textMain,
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-        ),
-        icon: Icon(
-          Icons.arrow_drop_down,
-          color: AppTheme.primary,
-          size: 28,
-        ),
-        items: _sportsTeams.keys.map((sport) {
-          return DropdownMenuItem<String>(
-            value: sport,
-            child: Row(
-              children: [
-                Icon(
-                  _getSportIcon(sport),
-                  color: AppTheme.primary,
-                  size: 20,
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  sport,
-                  style: const TextStyle(
-                    color: AppTheme.textMain,
+      child: Row(
+        children: [
+          // Icon on the left
+          
+          // Dropdown button
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedSport,
+                isExpanded: true,
+                hint: Text(
+                  'Select a sport',
+                  style: TextStyle(
+                    color: AppTheme.textFaint.withValues(alpha: 0.6),
                     fontSize: 15,
-                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ],
+                dropdownColor: AppTheme.inputFill,
+                style: const TextStyle(
+                  color: AppTheme.textMain,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+                icon: Icon(
+                  Icons.arrow_drop_down,
+                  color: AppTheme.primary,
+                  size: 28,
+                ),
+                items: _availableSports.map((sport) {
+                  return DropdownMenuItem<String>(
+                    value: sport.name,
+                    child: Row(
+                      children: [
+                        Icon(
+                          _getSportIcon(sport.name),
+                          color: AppTheme.primary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          sport.name,
+                          style: const TextStyle(
+                            color: AppTheme.textMain,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _selectedSport = newValue;
+                    if (newValue != null) {
+                      // Load teams for the selected sport
+                      _loadTeamsForSport(newValue);
+                    } else {
+                      // If no sport selected, clear teams
+                      _availableTeams.clear();
+                      _selectedTeams.clear();
+                      _onTeamsUpdated(_selectedTeams);
+                    }
+                  });
+                },
+              ),
             ),
-          );
-        }).toList(),
-        onChanged: (String? newValue) {
-          setState(() {
-            _selectedSport = newValue;
-            // Remove teams that don't belong to the newly selected sport
-            if (newValue != null && _sportsTeams.containsKey(newValue)) {
-              final teamsForSport = _sportsTeams[newValue]!;
-              _selectedTeams.removeWhere((team) => !teamsForSport.contains(team));
-              _onTeamsUpdated(_selectedTeams);
-            } else {
-              // If no sport selected, clear all selections
-              _selectedTeams.clear();
-              _onTeamsUpdated(_selectedTeams);
-            }
-          });
-        },
+          ),
+        ],
       ),
     );
   }
   
   IconData _getSportIcon(String sport) {
-    switch (sport) {
-      case 'Basketball':
-        return Icons.sports_basketball;
-      case 'Soccer':
-        return Icons.sports_soccer;
-      case 'Football':
-        return Icons.sports_football;
-      case 'Baseball':
-        return Icons.sports_baseball;
-      case 'Hockey':
-        return Icons.sports_hockey;
-      default:
-        return Icons.sports;
+    final sportLower = sport.toLowerCase();
+    if (sportLower.contains('basketball')) {
+      return Icons.sports_basketball;
+    } else if (sportLower.contains('soccer') || sportLower.contains('football')) {
+      return Icons.sports_soccer;
+    } else if (sportLower.contains('football') && !sportLower.contains('soccer')) {
+      return Icons.sports_football;
+    } else if (sportLower.contains('baseball')) {
+      return Icons.sports_baseball;
+    } else if (sportLower.contains('hockey')) {
+      return Icons.sports_hockey;
+    } else if (sportLower.contains('cricket')) {
+      return Icons.sports_cricket;
+    } else if (sportLower.contains('f1') || sportLower.contains('racing')) {
+      return Icons.speed;
+    } else if (sportLower.contains('rugby')) {
+      return Icons.sports_rugby;
     }
+    return Icons.sports;
   }
 
   Widget _buildTeamSelection() {
-    // Get teams for the selected sport, or empty list if no sport selected
-    final List<String> availableTeams = _selectedSport != null
-        ? (_sportsTeams[_selectedSport] ?? [])
-        : [];
+    if (_selectedSport == null) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppTheme.inputFill,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.1),
+            width: 1,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            'Please select a sport first',
+            style: TextStyle(
+              color: AppTheme.textFaint.withValues(alpha: 0.6),
+              fontSize: 14,
+            ),
+          ),
+        ),
+      );
+    }
 
-    if (availableTeams.isEmpty) {
+    if (_isLoadingTeams) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppTheme.inputFill,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.1),
+            width: 1,
+          ),
+        ),
+        child: const Center(
+          child: CircularProgressIndicator(
+            color: AppTheme.primary,
+          ),
+        ),
+      );
+    }
+
+    if (_availableTeams.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -1061,11 +1095,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: availableTeams.map((team) {
-        final isSelected = _selectedTeams.contains(team);
+      children: _availableTeams.map((team) {
+        final teamName = team.name;
+        final isSelected = _selectedTeams.contains(teamName);
         return FilterChip(
           label: Text(
-            team,
+            teamName,
             style: TextStyle(
               color: isSelected ? Colors.white : AppTheme.textFaint,
               fontSize: 13,
@@ -1076,9 +1111,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           onSelected: (_) {
             setState(() {
               if (isSelected) {
-                _selectedTeams.remove(team);
+                _selectedTeams.remove(teamName);
               } else {
-                _selectedTeams.add(team);
+                _selectedTeams.add(teamName);
               }
             });
             _onTeamsUpdated(_selectedTeams);

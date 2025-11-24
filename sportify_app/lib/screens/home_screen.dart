@@ -8,7 +8,7 @@ import 'package:sportify_app/models/video_content_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/profile_service.dart';
 import 'package:sportify_app/services/firestore_service.dart';
-import 'package:sportify_app/screens/create_room_screen.dart';
+import 'package:sportify_app/screens/rooms_screen.dart';
 import 'package:sportify_app/screens/profile_screen.dart';
 import 'package:sportify_app/screens/friends_screen.dart';
 import 'package:sportify_app/screens/room_screen.dart';
@@ -101,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen>
                     controller: _tabController,
                     children: [
                       _buildLobbyView(context),
-                      const CreateRoomScreen(),
+                      const RoomsScreen(), // Changed from CreateRoomScreen to RoomsScreen
                       const FriendsScreen(),
                     ],
                   ),
@@ -204,7 +204,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               tabs: const [
                 Tab(text: "LOBBY"),
-                Tab(text: "ROOM"),
+                Tab(text: "ROOMS"), // Changed from "ROOM" to "ROOMS"
                 Tab(text: "FRIENDS"),
               ],
             ),
@@ -961,36 +961,6 @@ class _HomeScreenState extends State<HomeScreen>
                               overflow: TextOverflow.ellipsis,
                             ),
                           ],
-                          // Rating display
-                          if (featuredRoom.averageRating != null) ...[
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.star,
-                                  color: Colors.amber,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  featuredRoom.averageRating!.toStringAsFixed(1),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '(${featuredRoom.totalRatings} ${featuredRoom.totalRatings == 1 ? 'rating' : 'ratings'})',
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.7),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
                           const SizedBox(height: 20),
                           NeonButton(
                             onPressed: () {
@@ -1114,7 +1084,7 @@ class _HomeScreenState extends State<HomeScreen>
       margin: const EdgeInsets.only(right: 12),
       child: NeonButton(
         onPressed: () {
-          // Navigate to team details or create room with team
+          _showTeamOptionsMenu(context, team);
         },
         isOutlined: true,
         backgroundColor:
@@ -1214,6 +1184,160 @@ class _HomeScreenState extends State<HomeScreen>
           ],
         ),
       ),
+    );
+  }
+
+  /// Shows team options menu when a team card is clicked
+  void _showTeamOptionsMenu(BuildContext context, Team team) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.5),
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            decoration: BoxDecoration(
+              color: AppTheme.inputFill,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppTheme.primary.withValues(alpha: 0.3),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Team name header with close button
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: AppTheme.primary.withValues(alpha: 0.2),
+                        width: 1,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          team.name,
+                          style: const TextStyle(
+                            color: AppTheme.textMain,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.close,
+                          color: AppTheme.textFaint,
+                          size: 20,
+                        ),
+                        onPressed: () => Navigator.of(context).pop(),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                ),
+                // Options
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.meeting_room,
+                        color: AppTheme.primary,
+                        size: 20,
+                      ),
+                    ),
+                    title: const Text(
+                      'Find rooms for this team',
+                      style: TextStyle(
+                        color: AppTheme.textMain,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 16,
+                      ),
+                    ),
+                    trailing: const Icon(
+                      Icons.arrow_forward_ios,
+                      color: AppTheme.textFaint,
+                      size: 16,
+                    ),
+                    onTap: () {
+                      Navigator.of(context).pop(); // Close the dialog
+                      // Navigate to Rooms tab with team filter
+                      _tabController.animateTo(1); // Switch to Rooms tab (index 1)
+                      // Navigate to RoomsScreen with team filter
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => RoomsScreen(filterByTeam: team.name),
+                          ),
+                        );
+                      });
+                    },
+                  ),
+                ),
+                // Add more options here later
+                // Padding(
+                //   padding: const EdgeInsets.symmetric(vertical: 5),
+                //   child: ListTile(
+                //     leading: Container(
+                //       padding: const EdgeInsets.all(8),
+                //       decoration: BoxDecoration(
+                //         color: AppTheme.primary.withValues(alpha: 0.2),
+                //         borderRadius: BorderRadius.circular(8),
+                //       ),
+                //       child: const Icon(
+                //         Icons.favorite,
+                //         color: AppTheme.primary,
+                //         size: 20,
+                //       ),
+                //     ),
+                //     title: const Text(
+                //       'Add to favorites',
+                //       style: TextStyle(
+                //         color: AppTheme.textMain,
+                //         fontWeight: FontWeight.w500,
+                //         fontSize: 16,
+                //       ),
+                //     ),
+                //     trailing: const Icon(
+                //       Icons.arrow_forward_ios,
+                //       color: AppTheme.textFaint,
+                //       size: 16,
+                //     ),
+                //     onTap: () {
+                //       // Add favorite functionality
+                //       Navigator.of(context).pop();
+                //     },
+                //   ),
+                // ),
+                const SizedBox(height: 10),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
