@@ -47,6 +47,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<Team> _availableTeams = [];
   bool _isLoadingSports = false;
   bool _isLoadingTeams = false;
+  bool _isEmailPasswordUser = true; // Assume email/password by default
   
   String? _currentProfilePicUrl;
   // String? _pendingProfilePicUrl; // Track the URL we just uploaded
@@ -64,6 +65,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _newPasswordFocusNode = FocusNode();
     _confirmPasswordFocusNode = FocusNode();
     _loadCurrentUser();
+    _checkSignInProvider(); // Check if user is email/password or OAuth
     _loadSports(); // Load sports from database
   }
 
@@ -111,6 +113,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
           SnackBar(content: Text('Error loading teams: $e')),
         );
       }
+    }
+  }
+
+  /// Check if the current user signed in with email/password or OAuth
+  Future<void> _checkSignInProvider() async {
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final user = authService.currentUser;
+      
+      if (user != null) {
+        // Check if the user has email/password provider
+        // If signed in with Google/OAuth, they won't have 'password' provider
+        final providers = user.providerData.map((p) => p.providerId).toList();
+        
+        // If the user has 'password' provider, they can change password
+        // Otherwise, they only have OAuth providers (like google.com)
+        _isEmailPasswordUser = providers.contains('password');
+        
+        if (mounted) {
+          setState(() {});
+        }
+      }
+    } catch (e) {
+      // If there's any error, assume email/password for safety
+      _isEmailPasswordUser = true;
     }
   }
 
@@ -817,8 +844,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 const SizedBox(height: 32),
                                 _buildPreferencesSection(),
                                 const SizedBox(height: 32),
-                                _buildChangePasswordSection(),
-                                const SizedBox(height: 32),
+                                // Only show change password for email/password accounts
+                                if (_isEmailPasswordUser)
+                                  _buildChangePasswordSection(),
+                                if (_isEmailPasswordUser) const SizedBox(height: 32),
                                 _buildActionButtons(),
                                 const SizedBox(height: 20),
                                 Divider(color: Colors.white.withValues(alpha: 0.1)),
