@@ -260,8 +260,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                   result = true;
                 } else {
                   ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    SnackBar(
-                      content: const Text('Invalid room code. Please try again.'),
+                    const SnackBar(
+                      content: Text('Invalid room code. Please try again.'),
                       backgroundColor: Colors.red,
                     ),
                   );

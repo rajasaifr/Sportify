@@ -30,9 +30,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // final ImagePicker _imagePicker = ImagePicker();
   late TextEditingController _displayNameController;
   late TextEditingController _bioController;
+  late TextEditingController _currentPasswordController;
+  late TextEditingController _newPasswordController;
+  late TextEditingController _confirmPasswordController;
+  late FocusNode _currentPasswordFocusNode;
+  late FocusNode _newPasswordFocusNode;
+  late FocusNode _confirmPasswordFocusNode;
   List<String> _selectedTeams = [];
   String? _selectedSport; // Track selected sport name
   bool _isLoading = false;
+  bool _isChangingPassword = false;
+  bool _showChangePasswordForm = false;
   
   // Database data
   List<Sport> _availableSports = [];
@@ -49,6 +57,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _displayNameController = TextEditingController();
     _bioController = TextEditingController();
+    _currentPasswordController = TextEditingController();
+    _newPasswordController = TextEditingController();
+    _confirmPasswordController = TextEditingController();
+    _currentPasswordFocusNode = FocusNode();
+    _newPasswordFocusNode = FocusNode();
+    _confirmPasswordFocusNode = FocusNode();
     _loadCurrentUser();
     _loadSports(); // Load sports from database
   }
@@ -540,7 +554,114 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   void _signOut() {
     final authService = Provider.of<AuthService>(context, listen: false);
-    authService.signOut();
+    // Perform sign out and navigate back to app root so AuthWrapper can show LoginScreen
+    authService.signOut().then((_) {
+      if (!mounted) return;
+      try {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      } catch (_) {
+        // ignore navigation errors
+      }
+    }).catchError((e) {
+      // show error if sign out fails
+      if (mounted) {
+        _showSnackBar('Sign out failed: ${e.toString()}', isError: true);
+      }
+    });
+  }
+
+  Future<void> _changePassword() async {
+    final currentPassword = _currentPasswordController.text.trim();
+    final newPassword = _newPasswordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+
+    // Validation
+    if (currentPassword.isEmpty) {
+      _showSnackBar('Please enter your current password', isError: true);
+      return;
+    }
+
+    if (newPassword.isEmpty) {
+      _showSnackBar('Please enter a new password', isError: true);
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      _showSnackBar('New password must be at least 6 characters', isError: true);
+      return;
+    }
+
+    if (newPassword != confirmPassword) {
+      _showSnackBar('New passwords do not match', isError: true);
+      return;
+    }
+
+    if (currentPassword == newPassword) {
+      _showSnackBar('New password must be different from current password', isError: true);
+      return;
+    }
+
+    setState(() => _isChangingPassword = true);
+
+    try {
+      final authService = Provider.of<AuthService>(context, listen: false);
+      await authService.changePasswordWithVerification(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      );
+
+      if (mounted) {
+        // Show success message
+        _showSnackBar('Password changed successfully! Signing you out...', isError: false);
+        
+        // Wait a moment for the user to see the message
+        await Future.delayed(const Duration(seconds: 2));
+
+        if (mounted) {
+          // Sign out the user
+          await authService.signOut();
+
+          // Clear the form and reset state
+          _currentPasswordController.clear();
+          _newPasswordController.clear();
+          _confirmPasswordController.clear();
+
+          if (mounted) {
+            setState(() {
+              _isChangingPassword = false;
+              _showChangePasswordForm = false;
+            });
+
+            // Show final notification
+            _showSnackBar('Please sign in again with your new password', isError: false);
+
+            // Return to the app root so `AuthWrapper` can update the UI
+            // (AuthWrapper is the `home` of MaterialApp and will show LoginScreen)
+            await Future.delayed(const Duration(milliseconds: 300));
+            if (mounted) {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isChangingPassword = false);
+        _showSnackBar(e.toString().replaceAll('Exception: ', ''), isError: true);
+      }
+    }
+  }
+
+  void _showSnackBar(String message, {required bool isError}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: const TextStyle(color: Colors.white)),
+        backgroundColor: isError ? Colors.redAccent : Colors.green,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   void _onTeamsUpdated(List<String> teams) {
@@ -553,6 +674,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void dispose() {
     _displayNameController.dispose();
     _bioController.dispose();
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    _currentPasswordFocusNode.dispose();
+    _newPasswordFocusNode.dispose();
+    _confirmPasswordFocusNode.dispose();
     super.dispose();
   }
 
@@ -689,6 +816,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                                 const SizedBox(height: 32),
                                 _buildPreferencesSection(),
+                                const SizedBox(height: 32),
+                                _buildChangePasswordSection(),
                                 const SizedBox(height: 32),
                                 _buildActionButtons(),
                                 const SizedBox(height: 20),
@@ -954,7 +1083,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                 ),
-                icon: Icon(
+                icon: const Icon(
                   Icons.arrow_drop_down,
                   color: AppTheme.primary,
                   size: 28,
@@ -1129,6 +1258,178 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildChangePasswordSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Security',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: AppTheme.textMain,
+                letterSpacing: 1.0,
+              ),
+            ),
+            ElevatedButton.icon(
+              onPressed: _isChangingPassword
+                  ? null
+                  : () {
+                      setState(() {
+                        _showChangePasswordForm = !_showChangePasswordForm;
+                        if (!_showChangePasswordForm) {
+                          _currentPasswordController.clear();
+                          _newPasswordController.clear();
+                          _confirmPasswordController.clear();
+                        }
+                      });
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _showChangePasswordForm
+                    ? Colors.redAccent.withValues(alpha: 0.2)
+                    : AppTheme.primary,
+                foregroundColor: _showChangePasswordForm
+                    ? Colors.redAccent
+                    : Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              icon: Icon(
+                _showChangePasswordForm ? Icons.close : Icons.edit,
+                size: 18,
+              ),
+              label: Text(
+                _showChangePasswordForm ? 'CANCEL' : 'CHANGE PASSWORD',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (_showChangePasswordForm) ...[
+          const SizedBox(height: 16),
+          _buildPasswordInput(
+            controller: _currentPasswordController,
+            label: 'Current Password',
+            icon: Icons.lock_outline_rounded,
+            focusNode: _currentPasswordFocusNode,
+            onSubmitted: () {
+              _newPasswordFocusNode.requestFocus();
+            },
+          ),
+          const SizedBox(height: 12),
+          _buildPasswordInput(
+            controller: _newPasswordController,
+            label: 'New Password',
+            icon: Icons.lock_open_rounded,
+            focusNode: _newPasswordFocusNode,
+            onSubmitted: () {
+              _confirmPasswordFocusNode.requestFocus();
+            },
+          ),
+          const SizedBox(height: 12),
+          _buildPasswordInput(
+            controller: _confirmPasswordController,
+            label: 'Confirm New Password',
+            icon: Icons.lock_outline_rounded,
+            focusNode: _confirmPasswordFocusNode,
+            onSubmitted: () {
+              if (!_isChangingPassword) _changePassword();
+            },
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 45,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
+                elevation: 8,
+                shadowColor: AppTheme.primary.withValues(alpha: 0.5),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: _isChangingPassword ? null : _changePassword,
+              child: _isChangingPassword
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'UPDATE PASSWORD',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPasswordInput({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    FocusNode? focusNode,
+    VoidCallback? onSubmitted,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: true,
+      focusNode: focusNode,
+      onFieldSubmitted: (_) => onSubmitted?.call(),
+      style: const TextStyle(color: AppTheme.textMain),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: AppTheme.textFaint),
+        floatingLabelStyle: const TextStyle(color: AppTheme.primary),
+        prefixIcon: Icon(icon, color: AppTheme.textFaint, size: 20),
+        filled: true,
+        fillColor: AppTheme.inputFill,
+        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: Colors.white.withValues(alpha: 0.1),
+            width: 1,
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: Colors.white.withValues(alpha: 0.1),
+            width: 1,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(
+            color: AppTheme.primary,
+            width: 2,
+          ),
+        ),
+      ),
     );
   }
 
