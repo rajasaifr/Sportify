@@ -454,10 +454,10 @@ class _HomeScreenState extends State<HomeScreen>
                   size: 20,
                 ),
                 const SizedBox(width: 8),
-                Expanded(
+                const Expanded(
                   child: Text(
                     'Favorite Teams',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppTheme.textMain,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -843,8 +843,8 @@ class _HomeScreenState extends State<HomeScreen>
                           errorBuilder: (context, error, stackTrace) {
                             // Fallback to gradient if image fails to load
                             return Container(
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                   colors: [
@@ -860,8 +860,8 @@ class _HomeScreenState extends State<HomeScreen>
                             if (loadingProgress == null) return child;
                             // Show gradient while loading
                             return Container(
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                   colors: [
@@ -888,8 +888,8 @@ class _HomeScreenState extends State<HomeScreen>
                       // Fallback gradient if no thumbnail
                       Positioned.fill(
                         child: Container(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: [
@@ -1241,7 +1241,7 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ),
                       IconButton(
-                        icon: Icon(
+                        icon: const Icon(
                           Icons.close,
                           color: AppTheme.textFaint,
                           size: 20,

@@ -396,7 +396,7 @@ class _RoomScreenState extends State<RoomScreen> {
     
     return StatefulBuilder(
       builder: (context, setPickerState) {
-        return Container(
+        return SizedBox(
           height: 400,
           child: Column(
             children: [
@@ -1147,7 +1147,7 @@ class _RoomScreenState extends State<RoomScreen> {
                                       children: [
                                         // Display average rating
                                         if (_currentRoom.averageRating != null) ...[
-                                          Icon(
+                                          const Icon(
                                             Icons.star,
                                             color: Colors.amber,
                                             size: 20,
