@@ -4,7 +4,6 @@ import 'package:sportify_app/models/video_content_model.dart';
 import 'package:sportify_app/models/user_model.dart';
 import 'package:sportify_app/models/friendship_model.dart';
 import 'package:sportify_app/models/message_model.dart';
-import 'package:sportify_app/models/playback_state_model.dart';
 import 'package:sportify_app/models/team_model.dart';
 import 'package:sportify_app/models/sport_model.dart';
 import 'package:sportify_app/services/interfaces/firestore_service_interface.dart';
@@ -452,71 +451,6 @@ class FirestoreService implements IFirestoreService {
     }
   }
 
-  // --- Playback State Functions (Video Synchronization) ---
-
-  /// Updates the playback state for a user in a room
-  Future<void> updatePlaybackState({
-    required String roomId,
-    required String userId,
-    required bool isPlaying,
-    required double currentTime,
-    required bool isHost,
-  }) async {
-    try {
-      final playbackState = PlaybackState(
-        roomId: roomId,
-        userId: userId,
-        isPlaying: isPlaying,
-        currentTime: currentTime,
-        lastUpdated: DateTime.now(),
-        isHost: isHost,
-      );
-
-      await _firestore
-          .collection('rooms')
-          .doc(roomId)
-          .collection('playbackStates')
-          .doc(userId)
-          .set(playbackState.toJson(), SetOptions(merge: true));
-    } catch (e) {
-      Logger.error("Error updating playback state",
-          error: e, tag: 'FirestoreService');
-    }
-  }
-
-  /// Gets the host's playback state for a room
-  Stream<PlaybackState?> getHostPlaybackStateStream(
-      String roomId, String hostId) {
-    return _firestore
-        .collection('rooms')
-        .doc(roomId)
-        .collection('playbackStates')
-        .doc(hostId)
-        .snapshots()
-        .map((snapshot) {
-      if (snapshot.exists && snapshot.data() != null) {
-        return PlaybackState.fromJson(snapshot.data()!);
-      }
-      return null;
-    });
-  }
-
-  /// Gets a user's playback state
-  Stream<PlaybackState?> getUserPlaybackStateStream(
-      String roomId, String userId) {
-    return _firestore
-        .collection('rooms')
-        .doc(roomId)
-        .collection('playbackStates')
-        .doc(userId)
-        .snapshots()
-        .map((snapshot) {
-      if (snapshot.exists && snapshot.data() != null) {
-        return PlaybackState.fromJson(snapshot.data()!);
-      }
-      return null;
-    });
-  }
 
   // --- Team Functions ---
 

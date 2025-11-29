@@ -6,7 +6,6 @@ import 'package:sportify_app/models/room_model.dart';
 import 'package:sportify_app/models/video_content_model.dart';
 import 'package:sportify_app/models/message_model.dart';
 import 'package:sportify_app/models/user_model.dart';
-import 'package:sportify_app/models/playback_state_model.dart';
 import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/utils/logger.dart';
@@ -33,257 +32,29 @@ class _RoomScreenState extends State<RoomScreen> {
   String? _videoId;
   late Room _currentRoom = widget.room;
 
-  // Video synchronization state
-  bool _isHost = false;
-  bool _isLocalPaused = false; // Member's local pause state
-  double _hostCurrentTime = 0.0;
-  bool _hostIsPlaying = false;
-  StreamSubscription<PlaybackState?>? _hostStateSubscription;
-  Timer? _playbackUpdateTimer;
-  html.IFrameElement? _youtubeIframe;
-  bool _isSyncing = false;
-
   // Rating state
   int? _userRating;
   bool _isLoadingRating = false;
+
+  // Check if current user is the host
+  bool get _isHost {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    final currentUserId = authService.currentUser?.uid;
+    return currentUserId != null && currentUserId == _currentRoom.hostId;
+  }
 
   @override
   void initState() {
     super.initState();
     _loadVideoContent();
-    _initializeSynchronization();
     _loadUserRating();
   }
 
-  void _initializeSynchronization() {
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final currentUserId = authService.currentUser?.uid;
-    
-    if (currentUserId != null) {
-      _isHost = currentUserId == _currentRoom.hostId;
-      
-      // Check if host is in the room
-      final isHostInRoom = _currentRoom.participants.contains(_currentRoom.hostId);
-      
-      if (!isHostInRoom && !_isHost) {
-        // Host is not in room, disable video for members
-        Logger.warning("Host is not in room, video unavailable for members", tag: 'RoomScreen');
-        return;
-      }
-      
-      if (_isHost) {
-        // Host starts the update timer
-        _startPlaybackUpdateTimer();
-      } else {
-        // Members listen to host's state
-        _startPlaybackStateListener();
-      }
-    }
-  }
 
-  void _startPlaybackStateListener() {
-    final firestoreService = Provider.of<FirestoreService>(context, listen: false);
-    _hostStateSubscription = firestoreService
-        .getHostPlaybackStateStream(_currentRoom.roomId, _currentRoom.hostId)
-        .listen((hostState) {
-      if (hostState != null && mounted && !_isHost) {
-        setState(() {
-          _hostCurrentTime = hostState.currentTime;
-          _hostIsPlaying = hostState.isPlaying;
-        });
-        
-        // If host paused, pause all members
-        if (!hostState.isPlaying && !_isLocalPaused) {
-          _pauseVideo();
-        }
-        // If host resumed and member is not locally paused, resume
-        else if (hostState.isPlaying && !_isLocalPaused) {
-          _resumeVideo();
-        }
-        
-        // Prevent members from going beyond host's current time
-        if (!_isLocalPaused) {
-          _enforceHostTimeLimit();
-        }
-      }
-    });
-  }
 
-  void _startPlaybackUpdateTimer() {
-    // Update host's playback state every second (only if host)
-    if (_isHost) {
-      _playbackUpdateTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        if (mounted) {
-          _updateHostPlaybackState();
-        }
-      });
-    }
-  }
-
-  Future<void> _updateHostPlaybackState() async {
-    if (!_isHost || _youtubeIframe == null || _isSyncing) return;
-    
-    try {
-      // For host, we'll track time locally and update Firestore
-      // In a production app, you'd use YouTube IFrame API properly to get actual playback state
-      final firestoreService = Provider.of<FirestoreService>(context, listen: false);
-      final authService = Provider.of<AuthService>(context, listen: false);
-      final currentUserId = authService.currentUser?.uid;
-      
-      if (currentUserId != null) {
-        // Update host state - in production, get actual time from YouTube API
-        await firestoreService.updatePlaybackState(
-          roomId: _currentRoom.roomId,
-          userId: currentUserId,
-          isPlaying: !_isLocalPaused, // Host is playing if not locally paused
-          currentTime: _hostCurrentTime,
-          isHost: true,
-        );
-      }
-    } catch (e) {
-      Logger.error("Error updating host playback state", error: e, tag: 'RoomScreen');
-    }
-  }
-
-  Future<double?> _getCurrentTime() async {
-    if (!kIsWeb || _youtubeIframe == null) return null;
-    
-    try {
-      // Use postMessage to communicate with YouTube IFrame
-      // Note: This is a simplified approach - in production, you'd use YouTube IFrame API properly
-      // For now, we'll track time locally and update from host state
-      return _hostCurrentTime;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  Future<void> _pauseVideo() async {
-    if (!kIsWeb || _youtubeIframe == null) return;
-    
-    try {
-      // Send pause command via postMessage
-      _youtubeIframe!.contentWindow!.postMessage(
-        '{"event":"command","func":"pauseVideo","args":""}',
-        '*',
-      );
-    } catch (e) {
-      Logger.error("Error pausing video", error: e, tag: 'RoomScreen');
-    }
-  }
-
-  Future<void> _resumeVideo() async {
-    if (!kIsWeb || _youtubeIframe == null) return;
-    
-    try {
-      // Send play command via postMessage
-      _youtubeIframe!.contentWindow!.postMessage(
-        '{"event":"command","func":"playVideo","args":""}',
-        '*',
-      );
-    } catch (e) {
-      Logger.error("Error resuming video", error: e, tag: 'RoomScreen');
-    }
-  }
-
-  Future<void> _seekTo(double time) async {
-    if (!kIsWeb || _youtubeIframe == null) return;
-    
-    try {
-      // Ensure time is valid (non-negative)
-      final seekTime = time < 0 ? 0.0 : time;
-      
-      // Send seek command via postMessage with proper formatting
-      final seekCommand = '{"event":"command","func":"seekTo","args":[$seekTime, true]}';
-      _youtubeIframe!.contentWindow!.postMessage(seekCommand, '*');
-      
-      Logger.debug("Seeking to: $seekTime", tag: 'RoomScreen');
-    } catch (e) {
-      Logger.error("Error seeking video", error: e, tag: 'RoomScreen');
-    }
-  }
-
-  void _enforceHostTimeLimit() async {
-    if (_isHost || _isLocalPaused) return;
-    
-    final currentTime = await _getCurrentTime();
-    if (currentTime != null && currentTime > _hostCurrentTime + 1.0) {
-      // Member is ahead of host, seek back to host's time
-      await _seekTo(_hostCurrentTime);
-    }
-  }
-
-  Future<void> _syncToHost() async {
-    if (_isHost || _isSyncing) return;
-    
-    // Check if host is still in room
-    final isHostInRoom = _currentRoom.participants.contains(_currentRoom.hostId);
-    if (!isHostInRoom) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Host is not in the room. Video unavailable.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-      return;
-    }
-    
-    setState(() => _isSyncing = true);
-    
-    try {
-      // First pause to prevent reload
-      await _pauseVideo();
-      
-      // Wait a bit for pause to take effect
-      await Future.delayed(const Duration(milliseconds: 300));
-      
-      // Then seek to host's time
-      await _seekTo(_hostCurrentTime);
-      
-      // Wait for seek to complete
-      await Future.delayed(const Duration(milliseconds: 500));
-      
-      // Resume if host is playing
-      if (_hostIsPlaying) {
-        _isLocalPaused = false;
-        await _resumeVideo();
-      } else {
-        // Keep paused if host is paused
-        await _pauseVideo();
-      }
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Synced to host'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 1),
-          ),
-        );
-      }
-    } catch (e) {
-      Logger.error("Error syncing to host", error: e, tag: 'RoomScreen');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Sync failed: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSyncing = false);
-      }
-    }
-  }
 
   @override
   void dispose() {
-    _hostStateSubscription?.cancel();
-    _playbackUpdateTimer?.cancel();
     _messageController.dispose();
     super.dispose();
   }
@@ -1453,36 +1224,6 @@ class _RoomScreenState extends State<RoomScreen> {
                                 ],
                               ),
                             ),
-                            // Sync Now button for members
-                            if (!_isHost)
-                              Padding(
-                                padding: const EdgeInsets.only(left: 16),
-                                child: ElevatedButton.icon(
-                                  onPressed: _isSyncing ? null : _syncToHost,
-                                  icon: _isSyncing
-                                      ? const SizedBox(
-                                          width: 16,
-                                          height: 16,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white,
-                                          ),
-                                        )
-                                      : const Icon(Icons.sync, size: 18),
-                                  label: const Text('SYNC NOW'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF6C5CE7),
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 12,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                ),
-                              ),
                           ],
                         ),
                       ],
@@ -1908,9 +1649,6 @@ class _RoomScreenState extends State<RoomScreen> {
         ..style.display = 'block'
         ..allowFullscreen = true
         ..allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
-      
-      // Store reference for API calls
-      _youtubeIframe = iframe;
       
       // Set up event listeners for playback state tracking
       iframe.onLoad.listen((_) {
