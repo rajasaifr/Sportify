@@ -109,7 +109,9 @@ class _LoginScreenState extends State<LoginScreen> {
         _showSnackBar('Account created successfully!');
       }
     } catch (e) {
-      _showSnackBar('Google Sign-In failed.');
+      // Show more descriptive error to help debugging
+      Logger.error('Google Sign-In exception', error: e, tag: 'LoginScreen');
+      _showSnackBar('Google Sign-In failed: ${e.toString()}');
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
