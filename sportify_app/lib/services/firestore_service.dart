@@ -38,8 +38,8 @@ class FirestoreService implements IFirestoreService {
   /// Generates a random room code for private rooms (format: Cr23AB)
   String _generateRoomCode() {
     final random = DateTime.now().millisecondsSinceEpoch;
-    final letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    final numbers = '0123456789';
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const numbers = '0123456789';
     
     // Generate 2 letters + 2 numbers + 2 letters (e.g., Cr23AB)
     final letter1 = letters[(random % letters.length)];

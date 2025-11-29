@@ -17,12 +17,35 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
+  
+  late FocusNode _emailFocusNode;
+  late FocusNode _passwordFocusNode;
+  late FocusNode _nameFocusNode;
 
   bool _isEmailLoading = false;
   bool _isGoogleLoading = false;
   bool _isSignup = false;
 
   bool get _isAnyLoading => _isEmailLoading || _isGoogleLoading;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailFocusNode = FocusNode();
+    _passwordFocusNode = FocusNode();
+    _nameFocusNode = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _nameController.dispose();
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    _nameFocusNode.dispose();
+    super.dispose();
+  }
 
   // --- LOGIC SECTION ---
   Future<void> _submit() async {
@@ -263,6 +286,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           label: "Email",
                           icon: Icons.alternate_email,
                           keyboardType: TextInputType.emailAddress,
+                          focusNode: _emailFocusNode,
+                          onSubmitted: () {
+                            if (_isSignup) {
+                              _nameFocusNode.requestFocus();
+                            } else {
+                              _passwordFocusNode.requestFocus();
+                            }
+                          },
                         ),
                         const SizedBox(height: 16),
 
@@ -271,6 +302,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             controller: _nameController,
                             label: "Username",
                             icon: Icons.person_outline,
+                            focusNode: _nameFocusNode,
+                            onSubmitted: () {
+                              _passwordFocusNode.requestFocus();
+                            },
                           ),
                           const SizedBox(height: 16),
                         ],
@@ -280,24 +315,15 @@ class _LoginScreenState extends State<LoginScreen> {
                           label: "Password",
                           icon: Icons.lock_outline_rounded,
                           isPassword: true,
+                          focusNode: _passwordFocusNode,
+                          onSubmitted: () {
+                            if (!_isAnyLoading) {
+                              _submit();
+                            }
+                          },
                         ),
 
-                        if (!_isSignup)
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: () {},
-                              child: const Text(
-                                'Forgot password?',
-                                style: TextStyle(
-                                    color: AppTheme.textFaint, fontSize: 12),
-                              ),
-                            ),
-                          )
-                        else
-                          const SizedBox(height: 24),
-
-                        if (!_isSignup) const SizedBox(height: 8),
+                        if (!_isSignup) const SizedBox(height: 24),
 
                         // --- MAIN BUTTON ---
                         SizedBox(
@@ -417,11 +443,15 @@ class _LoginScreenState extends State<LoginScreen> {
     required IconData icon,
     bool isPassword = false,
     TextInputType? keyboardType,
+    FocusNode? focusNode,
+    VoidCallback? onSubmitted,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: isPassword,
       keyboardType: keyboardType,
+      focusNode: focusNode,
+      onFieldSubmitted: (_) => onSubmitted?.call(),
       style: const TextStyle(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
@@ -477,13 +507,5 @@ class _LoginScreenState extends State<LoginScreen> {
         fit: BoxFit.contain,
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _nameController.dispose();
-    super.dispose();
   }
 }

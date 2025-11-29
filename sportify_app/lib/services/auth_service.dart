@@ -241,4 +241,54 @@ class AuthService implements IAuthService {
       throw Exception(e.toString());
     }
   }
+
+  /// Change Password with verification - requires previous password confirmation
+  Future<void> changePasswordWithVerification({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null || user.email == null) {
+        throw Exception('No user logged in. Please sign in again.');
+      }
+
+      // Re-authenticate the user with their current password
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
+      );
+
+      // Re-authenticate
+      await user.reauthenticateWithCredential(credential);
+
+      // Now update to the new password
+      await user.updatePassword(newPassword);
+
+      Logger.info('Password changed successfully', tag: 'AuthService');
+    } on FirebaseAuthException catch (e) {
+      Logger.error('FirebaseAuthException during password change: ${e.code}',
+          error: e, tag: 'AuthService');
+      String message = 'Failed to change password';
+      switch (e.code) {
+        case 'wrong-password':
+        case 'invalid-credential':
+          message = 'Current password is incorrect. Please try again.';
+          break;
+        case 'weak-password':
+          message = 'New password is too weak. Please use at least 6 characters.';
+          break;
+        case 'requires-recent-login':
+          message = 'Please sign in again and try changing your password.';
+          break;
+        default:
+          message = e.message ?? message;
+      }
+      throw Exception(message);
+    } catch (e) {
+      Logger.error('Unexpected error during password change',
+          error: e, tag: 'AuthService');
+      throw Exception('An unexpected error occurred: ${e.toString()}');
+    }
+  }
 }
