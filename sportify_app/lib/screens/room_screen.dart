@@ -36,6 +36,10 @@ class _RoomScreenState extends State<RoomScreen> {
   int? _userRating;
   bool _isLoadingRating = false;
 
+  // Video player state - store iframe reference to prevent recreation
+  html.IFrameElement? _videoIframe;
+  String? _videoPlayerViewId;
+
   // Check if current user is the host
   bool get _isHost {
     final authService = Provider.of<AuthService>(context, listen: false);
@@ -56,6 +60,9 @@ class _RoomScreenState extends State<RoomScreen> {
   @override
   void dispose() {
     _messageController.dispose();
+    // Clear video iframe reference on dispose
+    _videoIframe = null;
+    _videoPlayerViewId = null;
     super.dispose();
   }
 
@@ -1024,7 +1031,10 @@ class _RoomScreenState extends State<RoomScreen> {
                         : _checkHostPresence()
                             ? _videoContent != null
                                 ? _videoId != null
-                                    ? _buildVideoPlayer(_videoId!)
+                                    ? KeyedSubtree(
+                                        key: ValueKey('video-player-${_currentRoom.roomId}'),
+                                        child: _buildVideoPlayer(_videoId!),
+                                      )
                                     : Center(
                                         child: Column(
                                           mainAxisAlignment: MainAxisAlignment.center,
@@ -1632,10 +1642,15 @@ class _RoomScreenState extends State<RoomScreen> {
   }
 
   Widget _buildWebVideoPlayer(String embedUrl) {
-    // Create a unique view ID for the iframe using roomId and timestamp
-    final String viewId = 'youtube-player-${_currentRoom.roomId}-${DateTime.now().millisecondsSinceEpoch}';
+    // Use a stable view ID based only on roomId to prevent recreation on rebuilds
+    final String viewId = 'youtube-player-${_currentRoom.roomId}';
     
-    // Check if already registered, if so, use a different ID
+    // If we already have an iframe for this room, reuse it instead of creating a new one
+    if (_videoIframe != null && _videoPlayerViewId == viewId) {
+      Logger.debug("Reusing existing video iframe for room: ${_currentRoom.roomId}", tag: 'RoomScreen');
+      return HtmlElementView(viewType: viewId);
+    }
+    
     try {
       // Load YouTube IFrame API script
       _loadYouTubeIFrameAPI();
@@ -1650,18 +1665,26 @@ class _RoomScreenState extends State<RoomScreen> {
         ..allowFullscreen = true
         ..allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
       
+      // Store the iframe reference to prevent recreation
+      _videoIframe = iframe;
+      _videoPlayerViewId = viewId;
+      
       // Set up event listeners for playback state tracking
       iframe.onLoad.listen((_) {
         _setupYouTubePlayerEvents(iframe);
       });
 
-      // Register the platform view
-      ui_web.platformViewRegistry.registerViewFactory(
-        viewId,
-        (int viewId) => iframe,
-      );
-
-      Logger.info("Registered YouTube iframe with viewId: $viewId, embedUrl: $embedUrl", tag: 'RoomScreen');
+      // Register the platform view (will only register once per viewId)
+      try {
+        ui_web.platformViewRegistry.registerViewFactory(
+          viewId,
+          (int viewId) => iframe,
+        );
+        Logger.info("Registered YouTube iframe with viewId: $viewId, embedUrl: $embedUrl", tag: 'RoomScreen');
+      } catch (e) {
+        // View might already be registered, that's okay - we'll reuse it
+        Logger.debug("Video player viewId already registered, reusing: $viewId", tag: 'RoomScreen');
+      }
       
       return HtmlElementView(viewType: viewId);
     } catch (e) {
