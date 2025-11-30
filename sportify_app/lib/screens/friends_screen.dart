@@ -15,25 +15,10 @@ class FriendsScreen extends StatefulWidget {
 }
 
 class _FriendsScreenState extends State<FriendsScreen> {
-  // Color scheme matching login page
-  static const Color purpleButton = Color(0xFF6C5CE7);
-  static const Color containerGradient1 = Color(0xFF1a1a2e);
-  static const Color containerGradient2 = Color(0xFF16213e);
-  static const Color containerGradient3 = Color(0xFF0f3460);
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1a1a2e), // Match container gradient start color
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1a2e),
-        elevation: 0,
-        title: const Text(
-          'Friends',
-          style: TextStyle(color: Colors.white),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      backgroundColor: Colors.black, // Pure black background
       body: Column(
         children: [
           _buildSearchBar(),
@@ -59,8 +44,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
             ),
           ),
           Container(
-            decoration: const BoxDecoration(
-              color: purpleButton,
+            decoration: BoxDecoration(
+              color: AppTheme.primary, // Dark greenish blue
               shape: BoxShape.circle,
             ),
             child: IconButton(
@@ -86,12 +71,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
         child: Column(
           children: [
             Container(
-              color: const Color(0xFF1a1a2e),
-              child: const TabBar(
-                indicatorColor: Colors.redAccent,
+              color: Colors.black,
+              child: TabBar(
+                indicatorColor: AppTheme.primary, // Dark greenish blue
                 labelColor: Colors.white,
-                unselectedLabelColor: Colors.grey,
-                tabs: [
+                unselectedLabelColor: Colors.white.withValues(alpha: 0.5),
+                tabs: const [
                   Tab(text: 'My Friends'),
                   Tab(text: 'Requests'),
                 ],
@@ -99,7 +84,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             ),
             Expanded(
               child: Container(
-                color: const Color(0xFF1a1a2e),
+                color: Colors.black,
                 child: TabBarView(
                   children: [
                     _buildFriendsList(),
@@ -119,7 +104,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
     final currentUser = authService.currentUser;
 
     if (currentUser == null) {
-      return const Center(child: Text('Please log in'));
+      return const Center(child: Text('Please log in', style: TextStyle(color: Colors.white)));
     }
 
     return StreamBuilder<List<Friendship>>(
@@ -128,7 +113,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
-            child: CircularProgressIndicator(color: Colors.redAccent),
+            child: CircularProgressIndicator(color: AppTheme.primary),
           );
         }
 
@@ -165,60 +150,72 @@ class _FriendsScreenState extends State<FriendsScreen> {
           );
         }
 
-        return ListView.builder(
-          itemCount: friendships.length,
-          itemBuilder: (context, index) {
-            final friendship = friendships[index];
-            return FutureBuilder<UserModel?>(
-              future: _getFriendUserModel(friendship, currentUser.uid),
-              builder: (context, userSnapshot) {
-                if (userSnapshot.connectionState == ConnectionState.waiting) {
-                  return const ListTile(
-                    leading: CircleAvatar(backgroundColor: Colors.grey),
-                    title: Text('Loading...'),
-                  );
-                }
+        // Centered list with left and right borders
+        return Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 800), // Limit width for centering
+            margin: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(
+                  color: AppTheme.primary.withValues(alpha: 0.5),
+                  width: 2,
+                ),
+                right: BorderSide(
+                  color: AppTheme.primary.withValues(alpha: 0.5),
+                  width: 2,
+                ),
+              ),
+            ),
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: friendships.length,
+              itemBuilder: (context, index) {
+                final friendship = friendships[index];
+                return FutureBuilder<UserModel?>(
+                  future: _getFriendUserModel(friendship, currentUser.uid),
+                  builder: (context, userSnapshot) {
+                    if (userSnapshot.connectionState == ConnectionState.waiting) {
+                      return const ListTile(
+                        leading: CircleAvatar(backgroundColor: Colors.grey),
+                        title: Text('Loading...', style: TextStyle(color: Colors.white)),
+                      );
+                    }
 
-                final friendUser = userSnapshot.data;
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        containerGradient1,
-                        containerGradient2,
-                        containerGradient3,
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      width: 1,
-                    ),
-                  ),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.redAccent,
-                      child: Text(
-                        (friendUser?.displayName ?? 'U')[0].toUpperCase(),
-                        style: const TextStyle(color: Colors.white),
+                    final friendUser = userSnapshot.data;
+                    return Container(
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.cardBackground, // Dark background
+                        borderRadius: BorderRadius.circular(0), // Sharp corners
+                        border: Border.all(
+                          color: AppTheme.primary.withValues(alpha: 0.3), // Dark greenish blue border
+                          width: 1,
+                        ),
                       ),
-                    ),
-                    title: Text(
-                      friendUser?.displayName ?? 'Unknown User',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    subtitle: Text(
-                      friendUser?.email ?? '',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
-                    ),
-                  ),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: AppTheme.primary, // Dark greenish blue
+                          child: Text(
+                            (friendUser?.displayName ?? 'U')[0].toUpperCase(),
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        title: Text(
+                          friendUser?.displayName ?? 'Unknown User',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        subtitle: Text(
+                          friendUser?.email ?? '',
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
-            );
-          },
+            ),
+          ),
         );
       },
     );
@@ -229,7 +226,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
     final currentUser = authService.currentUser;
 
     if (currentUser == null) {
-      return const Center(child: Text('Please log in'));
+      return const Center(child: Text('Please log in', style: TextStyle(color: Colors.white)));
     }
 
     return StreamBuilder<List<Friendship>>(
@@ -238,7 +235,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
-            child: CircularProgressIndicator(color: Colors.redAccent),
+            child: CircularProgressIndicator(color: AppTheme.primary),
           );
         }
 
@@ -270,69 +267,81 @@ class _FriendsScreenState extends State<FriendsScreen> {
           );
         }
 
-        return ListView.builder(
-          itemCount: requests.length,
-          itemBuilder: (context, index) {
-            final request = requests[index];
-            return FutureBuilder<UserModel?>(
-              future: Provider.of<FirestoreService>(context, listen: false)
-                  .getUserById(request.user1Id),
-              builder: (context, userSnapshot) {
-                final senderUser = userSnapshot.data;
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        containerGradient1,
-                        containerGradient2,
-                        containerGradient3,
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      width: 1,
-                    ),
-                  ),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.redAccent,
-                      child: Text(
-                        (senderUser?.displayName ?? 'U')[0].toUpperCase(),
-                        style: const TextStyle(color: Colors.white),
+        // Centered list with left and right borders
+        return Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 800), // Limit width for centering
+            margin: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(
+                  color: AppTheme.primary.withValues(alpha: 0.5),
+                  width: 2,
+                ),
+                right: BorderSide(
+                  color: AppTheme.primary.withValues(alpha: 0.5),
+                  width: 2,
+                ),
+              ),
+            ),
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: requests.length,
+              itemBuilder: (context, index) {
+                final request = requests[index];
+                return FutureBuilder<UserModel?>(
+                  future: Provider.of<FirestoreService>(context, listen: false)
+                      .getUserById(request.user1Id),
+                  builder: (context, userSnapshot) {
+                    final senderUser = userSnapshot.data;
+                    return Container(
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.cardBackground, // Dark background
+                        borderRadius: BorderRadius.circular(0), // Sharp corners
+                        border: Border.all(
+                          color: AppTheme.primary.withValues(alpha: 0.3), // Dark greenish blue border
+                          width: 1,
+                        ),
                       ),
-                    ),
-                    title: Text(
-                      senderUser?.displayName ?? 'Unknown User',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                    subtitle: Text(
-                      'Wants to be your friend',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.check, color: Colors.green),
-                          onPressed: () =>
-                              _acceptFriendRequest(request.friendshipId),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: AppTheme.primary, // Dark greenish blue
+                          child: Text(
+                            (senderUser?.displayName ?? 'U')[0].toUpperCase(),
+                            style: const TextStyle(color: Colors.white),
+                          ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.red),
-                          onPressed: () =>
-                              _declineFriendRequest(request.friendshipId),
+                        title: Text(
+                          senderUser?.displayName ?? 'Unknown User',
+                          style: const TextStyle(color: Colors.white),
                         ),
-                      ],
-                    ),
-                  ),
+                        subtitle: Text(
+                          'Wants to be your friend',
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.check, color: Colors.green),
+                              onPressed: () =>
+                                  _acceptFriendRequest(request.friendshipId),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, color: Colors.red),
+                              onPressed: () =>
+                                  _declineFriendRequest(request.friendshipId),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
-            );
-          },
+            ),
+          ),
         );
       },
     );
@@ -355,12 +364,18 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Friend request accepted!')),
+        SnackBar(
+          content: const Text('Friend request accepted!'),
+          backgroundColor: AppTheme.primary,
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to accept request')),
+        const SnackBar(
+          content: Text('Failed to accept request'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -372,12 +387,18 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Friend request declined')),
+        SnackBar(
+          content: const Text('Friend request declined'),
+          backgroundColor: AppTheme.primary,
+        ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to decline request')),
+        const SnackBar(
+          content: Text('Failed to decline request'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
