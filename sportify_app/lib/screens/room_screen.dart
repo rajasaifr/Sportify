@@ -9,6 +9,7 @@ import 'package:sportify_app/models/user_model.dart';
 import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/utils/logger.dart';
+import 'package:sportify_app/theme/app_theme.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 // Required for web platform iframe embedding
 // ignore: avoid_web_libraries_in_flutter, deprecated_member_use
@@ -361,15 +362,22 @@ class _RoomScreenState extends State<RoomScreen> {
                   width: 350, // Match chat width
                   height: 400,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1a1a2e),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppTheme.cardBackground,
+                        AppTheme.bgStart,
+                      ],
+                    ),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.1),
+                      color: AppTheme.primary.withValues(alpha: 0.3),
                       width: 1,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.5),
+                        color: AppTheme.primary.withValues(alpha: 0.3),
                         blurRadius: 20,
                         spreadRadius: 2,
                       ),
@@ -411,10 +419,10 @@ class _RoomScreenState extends State<RoomScreen> {
               Container(
                 height: 50,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF16213e),
+                  color: AppTheme.cardBackground,
                   border: Border(
                     bottom: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.1),
+                      color: AppTheme.primary.withValues(alpha: 0.2),
                     ),
                   ),
                 ),
@@ -436,9 +444,15 @@ class _RoomScreenState extends State<RoomScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? const Color(0xFF6C5CE7).withValues(alpha: 0.3)
+                              ? AppTheme.primary.withValues(alpha: 0.3)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
+                          border: isSelected
+                              ? Border.all(
+                                  color: AppTheme.primary.withValues(alpha: 0.5),
+                                  width: 1,
+                                )
+                              : null,
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -446,8 +460,8 @@ class _RoomScreenState extends State<RoomScreen> {
                             Icon(
                               category['icon'] as IconData,
                               color: isSelected
-                                  ? const Color(0xFF6C5CE7)
-                                  : Colors.white.withValues(alpha: 0.6),
+                                  ? AppTheme.primary
+                                  : AppTheme.textFaint,
                               size: 20,
                             ),
                             if (isSelected) ...[
@@ -456,8 +470,8 @@ class _RoomScreenState extends State<RoomScreen> {
                                 category['name'] as String,
                                 style: TextStyle(
                                   color: isSelected
-                                      ? const Color(0xFF6C5CE7)
-                                      : Colors.white.withValues(alpha: 0.6),
+                                      ? AppTheme.primary
+                                      : AppTheme.textFaint,
                                   fontSize: 12,
                                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                                 ),
@@ -512,10 +526,10 @@ class _RoomScreenState extends State<RoomScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF16213e),
+                  color: AppTheme.cardBackground,
                   border: Border(
                     top: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.1),
+                      color: AppTheme.primary.withValues(alpha: 0.2),
                     ),
                   ),
                 ),
@@ -524,10 +538,10 @@ class _RoomScreenState extends State<RoomScreen> {
                   children: [
                     TextButton.icon(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close, color: Colors.white70, size: 18),
+                      icon: const Icon(Icons.close, color: AppTheme.textFaint, size: 18),
                       label: const Text(
                         'Close',
-                        style: TextStyle(color: Colors.white70),
+                        style: TextStyle(color: AppTheme.textFaint),
                       ),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -609,10 +623,17 @@ class _RoomScreenState extends State<RoomScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1a1a2e),
+          backgroundColor: AppTheme.cardBackground,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: AppTheme.primary.withValues(alpha: 0.3),
+              width: 1,
+            ),
+          ),
           title: const Text(
             'Edit Room',
-            style: TextStyle(color: Colors.white),
+            style: TextStyle(color: AppTheme.textMain),
           ),
           content: SingleChildScrollView(
             child: SizedBox(
@@ -622,21 +643,21 @@ class _RoomScreenState extends State<RoomScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Room Name
-                  TextField(
+                    TextField(
                     controller: nameController,
-                    style: const TextStyle(color: Colors.white),
+                    style: const TextStyle(color: AppTheme.textMain),
                     decoration: InputDecoration(
                       labelText: 'Room Name',
-                      labelStyle: const TextStyle(color: Colors.white70),
+                      labelStyle: const TextStyle(color: AppTheme.textFaint),
                       filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.1),
+                      fillColor: AppTheme.inputFill,
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF6C5CE7), width: 2),
+                        borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                       ),
                     ),
                   ),
@@ -645,19 +666,19 @@ class _RoomScreenState extends State<RoomScreen> {
                   // Description
                   TextField(
                     controller: descriptionController,
-                    style: const TextStyle(color: Colors.white),
+                    style: const TextStyle(color: AppTheme.textMain),
                     decoration: InputDecoration(
                       labelText: 'Description (Optional)',
-                      labelStyle: const TextStyle(color: Colors.white70),
+                      labelStyle: const TextStyle(color: AppTheme.textFaint),
                       filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.1),
+                      fillColor: AppTheme.inputFill,
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF6C5CE7), width: 2),
+                        borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                       ),
                     ),
                     maxLines: 3,
@@ -670,7 +691,7 @@ class _RoomScreenState extends State<RoomScreen> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: AppTheme.textMain.withValues(alpha: 0.9),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -681,20 +702,20 @@ class _RoomScreenState extends State<RoomScreen> {
                         return const Center(
                           child: Padding(
                             padding: EdgeInsets.all(16.0),
-                            child: CircularProgressIndicator(color: Colors.white),
+                            child: CircularProgressIndicator(color: AppTheme.primary),
                           ),
                         );
                       }
                       if (snapshot.hasError) {
                         return Text(
                           'Error: ${snapshot.error}',
-                          style: const TextStyle(color: Colors.red),
+                          style: const TextStyle(color: AppTheme.accent),
                         );
                       }
                       if (!snapshot.hasData || snapshot.data!.isEmpty) {
                         return const Text(
                           'No videos available',
-                          style: TextStyle(color: Colors.white70),
+                          style: TextStyle(color: AppTheme.textFaint),
                         );
                       }
                       
@@ -703,25 +724,25 @@ class _RoomScreenState extends State<RoomScreen> {
                         initialValue: selectedVideo,
                         hint: Text(
                           'Select a video',
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                          style: TextStyle(color: AppTheme.textFaint.withValues(alpha: 0.5)),
                         ),
                         isExpanded: true,
-                        dropdownColor: const Color(0xFF1a1a2e),
-                        style: const TextStyle(color: Colors.white),
+                        dropdownColor: AppTheme.cardBackground,
+                        style: const TextStyle(color: AppTheme.textMain),
                         decoration: InputDecoration(
                           filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.1),
+                          fillColor: AppTheme.inputFill,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                           ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: Color(0xFF6C5CE7), width: 2),
+                            borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                           ),
                         ),
                         onChanged: (video) {
@@ -735,7 +756,7 @@ class _RoomScreenState extends State<RoomScreen> {
                             child: Text(
                               video.title,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.white),
+                              style: const TextStyle(color: AppTheme.textMain),
                             ),
                           );
                         }).toList(),
@@ -750,28 +771,28 @@ class _RoomScreenState extends State<RoomScreen> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: AppTheme.textMain.withValues(alpha: 0.9),
                     ),
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<RoomType>(
                     initialValue: selectedRoomType,
-                    dropdownColor: const Color(0xFF1a1a2e),
-                    style: const TextStyle(color: Colors.white),
+                    dropdownColor: AppTheme.cardBackground,
+                    style: const TextStyle(color: AppTheme.textMain),
                     decoration: InputDecoration(
                       filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.1),
+                      fillColor: AppTheme.inputFill,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: Color(0xFF6C5CE7), width: 2),
+                        borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                       ),
                     ),
                     onChanged: (type) {
@@ -785,7 +806,7 @@ class _RoomScreenState extends State<RoomScreen> {
                         value: type,
                         child: Text(
                           typeName,
-                          style: const TextStyle(color: Colors.white),
+                          style: const TextStyle(color: AppTheme.textMain),
                         ),
                       );
                     }).toList(),
@@ -799,10 +820,10 @@ class _RoomScreenState extends State<RoomScreen> {
               onPressed: () => Navigator.of(context).pop(),
               child: const Text(
                 'Cancel',
-                style: TextStyle(color: Colors.white70),
+                style: TextStyle(color: AppTheme.textFaint),
               ),
             ),
-            TextButton(
+            ElevatedButton(
               onPressed: () {
                 if (nameController.text.trim().isNotEmpty && selectedVideo != null) {
                   Navigator.of(context).pop({
@@ -815,10 +836,11 @@ class _RoomScreenState extends State<RoomScreen> {
                   });
                 }
               },
-              child: const Text(
-                'Save',
-                style: TextStyle(color: Color(0xFF6C5CE7)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primary,
+                foregroundColor: Colors.white,
               ),
+              child: const Text('Save'),
             ),
           ],
         ),
@@ -882,28 +904,35 @@ class _RoomScreenState extends State<RoomScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1a2e),
+        backgroundColor: AppTheme.cardBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: AppTheme.accent.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
         title: const Text(
           'Delete Room',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: AppTheme.textMain),
         ),
         content: const Text(
           'Are you sure you want to delete this room? This action cannot be undone and all messages will be deleted.',
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(color: AppTheme.textFaint),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text(
               'Cancel',
-              style: TextStyle(color: Colors.white70),
+              style: TextStyle(color: AppTheme.textFaint),
             ),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text(
               'Delete',
-              style: TextStyle(color: Colors.red),
+              style: TextStyle(color: AppTheme.accent),
             ),
           ),
         ],
@@ -940,20 +969,33 @@ class _RoomScreenState extends State<RoomScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1a1a2e),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1a2e),
-        elevation: 0,
-        automaticallyImplyLeading: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => _navigateBackToRooms(),
+      backgroundColor: AppTheme.bgStart,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.topLeft,
+            radius: 1.5,
+            colors: [
+              Color(0xFF0A0A0F),
+              Color(0xFF000000),
+            ],
+          ),
         ),
-        title: Text(
-          _currentRoom.name,
-          style: const TextStyle(color: Colors.white),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: AppTheme.bgStart.withValues(alpha: 0.95),
+            elevation: 0,
+            automaticallyImplyLeading: true,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: AppTheme.textMain),
+              onPressed: () => _navigateBackToRooms(),
+            ),
+            title: Text(
+              _currentRoom.name,
+              style: const TextStyle(color: AppTheme.textMain),
+            ),
+            iconTheme: const IconThemeData(color: AppTheme.textMain),
         actions: [
           // Room Code Display (for private rooms) - left of edit
           if (_currentRoom.roomType == RoomType.private && _currentRoom.roomCode != null)
@@ -985,7 +1027,7 @@ class _RoomScreenState extends State<RoomScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Room code copied: ${_currentRoom.roomCode}'),
-                          backgroundColor: const Color(0xFF6C5CE7),
+                          backgroundColor: AppTheme.primary,
                           duration: const Duration(seconds: 2),
                         ),
                       );
@@ -1120,7 +1162,22 @@ class _RoomScreenState extends State<RoomScreen> {
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
-                    color: const Color(0xFF1a1a2e),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          AppTheme.cardBackground,
+                          AppTheme.bgStart,
+                        ],
+                      ),
+                      border: Border(
+                        top: BorderSide(
+                          color: AppTheme.primary.withValues(alpha: 0.2),
+                          width: 1,
+                        ),
+                      ),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1133,7 +1190,7 @@ class _RoomScreenState extends State<RoomScreen> {
                                   Text(
                                     _videoContent!.title,
                                     style: const TextStyle(
-                                      color: Colors.white,
+                                      color: AppTheme.textMain,
                                       fontSize: 20,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -1143,7 +1200,7 @@ class _RoomScreenState extends State<RoomScreen> {
                                     Text(
                                       _videoContent!.description,
                                       style: TextStyle(
-                                        color: Colors.white.withValues(alpha: 0.7),
+                                        color: AppTheme.textFaint,
                                         fontSize: 14,
                                       ),
                                       maxLines: 2,
@@ -1166,7 +1223,7 @@ class _RoomScreenState extends State<RoomScreen> {
                                           Text(
                                             _currentRoom.averageRating!.toStringAsFixed(1),
                                             style: const TextStyle(
-                                              color: Colors.white,
+                                              color: AppTheme.textMain,
                                               fontSize: 16,
                                               fontWeight: FontWeight.bold,
                                             ),
@@ -1175,7 +1232,7 @@ class _RoomScreenState extends State<RoomScreen> {
                                           Text(
                                             '(${_currentRoom.totalRatings} ${_currentRoom.totalRatings == 1 ? 'rating' : 'ratings'})',
                                             style: TextStyle(
-                                              color: Colors.white.withValues(alpha: 0.6),
+                                              color: AppTheme.textFaint,
                                               fontSize: 12,
                                             ),
                                           ),
@@ -1183,7 +1240,7 @@ class _RoomScreenState extends State<RoomScreen> {
                                           Text(
                                             'No ratings yet',
                                             style: TextStyle(
-                                              color: Colors.white.withValues(alpha: 0.6),
+                                              color: AppTheme.textFaint,
                                               fontSize: 12,
                                             ),
                                           ),
@@ -1197,7 +1254,7 @@ class _RoomScreenState extends State<RoomScreen> {
                                         Text(
                                           'Rate this room: ',
                                           style: TextStyle(
-                                            color: Colors.white.withValues(alpha: 0.8),
+                                            color: AppTheme.textFaint,
                                             fontSize: 14,
                                           ),
                                         ),
@@ -1211,7 +1268,7 @@ class _RoomScreenState extends State<RoomScreen> {
                                               padding: const EdgeInsets.symmetric(horizontal: 2),
                                               child: Icon(
                                                 isSelected ? Icons.star : Icons.star_border,
-                                                color: isSelected ? Colors.amber : Colors.white.withValues(alpha: 0.5),
+                                                color: isSelected ? Colors.amber : AppTheme.textFaint,
                                                 size: 28,
                                               ),
                                             ),
@@ -1224,7 +1281,7 @@ class _RoomScreenState extends State<RoomScreen> {
                                             height: 16,
                                             child: CircularProgressIndicator(
                                               strokeWidth: 2,
-                                              color: Colors.white,
+                                              color: AppTheme.primary,
                                             ),
                                           ),
                                         ],
@@ -1247,10 +1304,17 @@ class _RoomScreenState extends State<RoomScreen> {
           Container(
             width: 350,
             decoration: BoxDecoration(
-              color: const Color(0xFF16213e),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppTheme.cardBackground,
+                  AppTheme.bgStart,
+                ],
+              ),
               border: Border(
                 left: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.1),
+                  color: AppTheme.primary.withValues(alpha: 0.3),
                   width: 1,
                 ),
               ),
@@ -1261,10 +1325,10 @@ class _RoomScreenState extends State<RoomScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1a1a2e),
+                    color: AppTheme.cardBackground,
                     border: Border(
                       bottom: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.1),
+                        color: AppTheme.primary.withValues(alpha: 0.2),
                       ),
                     ),
                   ),
@@ -1272,14 +1336,14 @@ class _RoomScreenState extends State<RoomScreen> {
                     children: [
                       const Icon(
                         Icons.chat_bubble_outline,
-                        color: Colors.white,
+                        color: AppTheme.primary,
                         size: 20,
                       ),
                       const SizedBox(width: 8),
                       const Text(
                         'Live Chat',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppTheme.textMain,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1292,13 +1356,17 @@ class _RoomScreenState extends State<RoomScreen> {
                           return Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: Colors.redAccent.withValues(alpha: 0.2),
+                              color: AppTheme.primary.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppTheme.primary.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
                             ),
                             child: Text(
                               '$count 👤',
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: AppTheme.textMain,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -1383,10 +1451,10 @@ class _RoomScreenState extends State<RoomScreen> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1a1a2e),
+                    color: AppTheme.cardBackground,
                     border: Border(
                       top: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.1),
+                        color: AppTheme.primary.withValues(alpha: 0.2),
                       ),
                     ),
                   ),
@@ -1395,14 +1463,18 @@ class _RoomScreenState extends State<RoomScreen> {
                       // Emoji Button
                       Container(
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
+                          color: AppTheme.inputFill,
                           shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppTheme.primary.withValues(alpha: 0.3),
+                            width: 1,
+                          ),
                         ),
                         child: IconButton(
                           onPressed: _showEmojiPickerDialog,
                           icon: const Icon(
                             Icons.emoji_emotions,
-                            color: Colors.white,
+                            color: AppTheme.primary,
                             size: 24,
                           ),
                           tooltip: 'Add emoji',
@@ -1412,30 +1484,30 @@ class _RoomScreenState extends State<RoomScreen> {
                       Expanded(
                         child: TextField(
                           controller: _messageController,
-                          style: const TextStyle(color: Colors.white, fontSize: 16),
+                          style: const TextStyle(color: AppTheme.textMain, fontSize: 16),
                           decoration: InputDecoration(
                             hintText: 'Type a message...',
                             hintStyle: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.5),
+                              color: AppTheme.textFaint.withValues(alpha: 0.5),
                             ),
                             filled: true,
-                            fillColor: Colors.white.withValues(alpha: 0.1),
+                            fillColor: AppTheme.inputFill,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(24),
                               borderSide: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.3),
+                                color: Colors.white.withValues(alpha: 0.1),
                               ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(24),
                               borderSide: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.3),
+                                color: Colors.white.withValues(alpha: 0.1),
                               ),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(24),
                               borderSide: const BorderSide(
-                                color: Color(0xFF6C5CE7),
+                                color: AppTheme.primary,
                                 width: 2,
                               ),
                             ),
@@ -1449,9 +1521,16 @@ class _RoomScreenState extends State<RoomScreen> {
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF6C5CE7),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary,
                           shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primary.withValues(alpha: 0.5),
+                              blurRadius: 8,
+                              spreadRadius: 1,
+                            ),
+                          ],
                         ),
                         child: IconButton(
                           onPressed: _sendMessage,
@@ -1468,6 +1547,8 @@ class _RoomScreenState extends State<RoomScreen> {
             ),
           ),
         ],
+      ),
+        ),
       ),
     );
   }
@@ -1521,9 +1602,15 @@ class _RoomScreenState extends State<RoomScreen> {
                   ),
                   decoration: BoxDecoration(
                     color: isMyMessage
-                        ? const Color(0xFF6C5CE7)
-                        : Colors.white.withValues(alpha: 0.1),
+                        ? AppTheme.primary
+                        : AppTheme.inputFill,
                     borderRadius: BorderRadius.circular(12),
+                    border: isMyMessage
+                        ? null
+                        : Border.all(
+                            color: AppTheme.primary.withValues(alpha: 0.2),
+                            width: 1,
+                          ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

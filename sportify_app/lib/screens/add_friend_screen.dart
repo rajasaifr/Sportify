@@ -4,7 +4,8 @@ import 'package:sportify_app/models/user_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/models/friendship_model.dart';
-import 'package:sportify_app/utils/logger.dart'; 
+import 'package:sportify_app/utils/logger.dart';
+import 'package:sportify_app/theme/app_theme.dart';
 
 class AddFriendScreen extends StatefulWidget {
   const AddFriendScreen({super.key});
@@ -18,26 +19,18 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
   List<UserModel> _searchResults = [];
   bool _isSearching = false;
 
-  // Color scheme matching login page
-  static const Color darkBluishGreen = Color(0xFF0F4C3A);
-  static const Color mediumBluishGreen = Color(0xFF1B4332);
-  static const Color lightBluishGreen = Color(0xFF2D5A47);
-  static const Color redAccent = Color(0xFFDC2626);
-  static const Color backgroundColor = Color(0xFF000000);
-  static const Color cardBackground = Color(0xFF0A0A0A);
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1a1a2e), // Match container gradient start color
+      backgroundColor: AppTheme.bgStart,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1a2e),
+        backgroundColor: AppTheme.bgStart,
         elevation: 0,
         title: const Text(
           'Add Friends',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: AppTheme.textMain),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: AppTheme.textMain),
       ),
       body: Column(
         children: [
@@ -62,30 +55,30 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w500,
-              color: Colors.white.withValues(alpha: 0.9),
+              color: AppTheme.textMain.withValues(alpha: 0.9),
             ),
           ),
           const SizedBox(height: 8),
           TextField(
             controller: _searchController,
-            style: const TextStyle(color: Colors.white),
+            style: const TextStyle(color: AppTheme.textMain),
             decoration: InputDecoration(
               hintText: 'Search by username...',
-              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
-              prefixIcon: const Icon(Icons.search, color: Colors.white70),
+              hintStyle: TextStyle(color: AppTheme.textFaint.withValues(alpha: 0.5)),
+              prefixIcon: const Icon(Icons.search, color: AppTheme.textFaint),
               filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.1),
+              fillColor: AppTheme.inputFill,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: darkBluishGreen, width: 2),
+                borderSide: const BorderSide(color: AppTheme.primary, width: 2),
               ),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
@@ -103,7 +96,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
     if (_isSearching) {
       return const Expanded(
         child: Center(
-          child: CircularProgressIndicator(color: Colors.redAccent),
+          child: CircularProgressIndicator(color: AppTheme.primary),
         ),
       );
     }
@@ -113,7 +106,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
         child: Center(
           child: Text(
             'Search for users by their display name',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+            style: TextStyle(color: AppTheme.textFaint.withValues(alpha: 0.7)),
           ),
         ),
       );
@@ -135,15 +128,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF000000),
-            Color(0xFF0A0A0A),
-            darkBluishGreen,
-          ],
-        ),
+        color: AppTheme.cardBackground,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
           color: Colors.white.withValues(alpha: 0.1),
@@ -152,7 +137,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
       ),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: Colors.redAccent,
+          backgroundColor: AppTheme.primary,
           child: Text(
             initial,
             style: const TextStyle(color: Colors.white),
@@ -160,11 +145,11 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
         ),
         title: Text(
           user.displayName ?? 'No name',
-          style: const TextStyle(color: Colors.white),
+          style: const TextStyle(color: AppTheme.textMain),
         ),
         subtitle: Text(
           user.email,
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+          style: TextStyle(color: AppTheme.textFaint.withValues(alpha: 0.7)),
         ),
         trailing: _buildAddButton(user, _getCurrentUserId()),
       ),
@@ -215,7 +200,7 @@ Widget _getFriendButtonByStatus(FriendshipStatus? status, UserModel user) {
                 ElevatedButton(
                   onPressed: () => _acceptFriendRequest(friendship!.friendshipId),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: darkBluishGreen,
+                    backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -245,7 +230,7 @@ Widget _getFriendButtonByStatus(FriendshipStatus? status, UserModel user) {
       return ElevatedButton(
         onPressed: () => _sendFriendRequest(user),
         style: ElevatedButton.styleFrom(
-          backgroundColor: darkBluishGreen,
+          backgroundColor: AppTheme.primary,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
@@ -259,7 +244,7 @@ Widget _getFriendButtonByStatus(FriendshipStatus? status, UserModel user) {
       return ElevatedButton(
         onPressed: () => _sendFriendRequest(user),
         style: ElevatedButton.styleFrom(
-          backgroundColor: darkBluishGreen,
+          backgroundColor: AppTheme.primary,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
