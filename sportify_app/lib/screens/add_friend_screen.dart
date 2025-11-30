@@ -19,10 +19,12 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
   bool _isSearching = false;
 
   // Color scheme matching login page
-  static const Color purpleButton = Color(0xFF6C5CE7);
-  static const Color containerGradient1 = Color(0xFF1a1a2e);
-  static const Color containerGradient2 = Color(0xFF16213e);
-  static const Color containerGradient3 = Color(0xFF0f3460);
+  static const Color darkBluishGreen = Color(0xFF0F4C3A);
+  static const Color mediumBluishGreen = Color(0xFF1B4332);
+  static const Color lightBluishGreen = Color(0xFF2D5A47);
+  static const Color redAccent = Color(0xFFDC2626);
+  static const Color backgroundColor = Color(0xFF000000);
+  static const Color cardBackground = Color(0xFF0A0A0A);
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +85,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: purpleButton, width: 2),
+                borderSide: const BorderSide(color: darkBluishGreen, width: 2),
               ),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
@@ -137,9 +139,9 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            containerGradient1,
-            containerGradient2,
-            containerGradient3,
+            Color(0xFF000000),
+            Color(0xFF0A0A0A),
+            darkBluishGreen,
           ],
         ),
         borderRadius: BorderRadius.circular(8),
@@ -213,7 +215,7 @@ Widget _getFriendButtonByStatus(FriendshipStatus? status, UserModel user) {
                 ElevatedButton(
                   onPressed: () => _acceptFriendRequest(friendship!.friendshipId),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: purpleButton,
+                    backgroundColor: darkBluishGreen,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -243,7 +245,7 @@ Widget _getFriendButtonByStatus(FriendshipStatus? status, UserModel user) {
       return ElevatedButton(
         onPressed: () => _sendFriendRequest(user),
         style: ElevatedButton.styleFrom(
-          backgroundColor: purpleButton,
+          backgroundColor: darkBluishGreen,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
@@ -257,7 +259,7 @@ Widget _getFriendButtonByStatus(FriendshipStatus? status, UserModel user) {
       return ElevatedButton(
         onPressed: () => _sendFriendRequest(user),
         style: ElevatedButton.styleFrom(
-          backgroundColor: purpleButton,
+          backgroundColor: darkBluishGreen,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),

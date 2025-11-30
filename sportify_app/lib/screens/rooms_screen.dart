@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sportify_app/models/room_model.dart';
+import 'package:sportify_app/models/video_content_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/screens/create_room_screen.dart';
 import 'package:sportify_app/screens/room_screen.dart';
+import 'package:sportify_app/theme/app_theme.dart';
 
 class RoomsScreen extends StatefulWidget {
-  final String? filterByTeam; // Add optional team filter parameter
+  final String? filterByTeam;
   
   const RoomsScreen({super.key, this.filterByTeam});
 
@@ -35,11 +37,11 @@ class _RoomsScreenState extends State<RoomsScreen> {
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF1a1a2e),
+          backgroundColor: AppTheme.cardBackground,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(0),
             side: BorderSide(
-              color: const Color(0xFF6C5CE7).withValues(alpha: 0.5),
+              color: AppTheme.primary.withValues(alpha: 0.5),
               width: 1,
             ),
           ),
@@ -66,16 +68,16 @@ class _RoomsScreenState extends State<RoomsScreen> {
                   filled: true,
                   fillColor: Colors.white.withValues(alpha: 0.1),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(0),
                     borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(0),
                     borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: Color(0xFF6C5CE7), width: 2),
+                    borderRadius: BorderRadius.circular(0),
+                    borderSide: BorderSide(color: AppTheme.primary, width: 2),
                   ),
                 ),
                 textAlign: TextAlign.center,
@@ -111,7 +113,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6C5CE7),
+                backgroundColor: AppTheme.primary,
               ),
               child: const Text('Join'),
             ),
@@ -128,11 +130,11 @@ class _RoomsScreenState extends State<RoomsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1a1a2e),
+        backgroundColor: AppTheme.cardBackground,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(0),
           side: BorderSide(
-            color: const Color(0xFF6C5CE7).withValues(alpha: 0.5),
+            color: AppTheme.primary.withValues(alpha: 0.5),
             width: 1,
           ),
         ),
@@ -227,10 +229,10 @@ class _RoomsScreenState extends State<RoomsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1a1a2e),
+      backgroundColor: AppTheme.bgStart,
       appBar: widget.filterByTeam != null
           ? AppBar(
-              backgroundColor: const Color(0xFF1a1a2e),
+              backgroundColor: AppTheme.bgStart,
               elevation: 0,
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -261,7 +263,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
             ),
           );
         },
-        backgroundColor: const Color(0xFF6C5CE7),
+        backgroundColor: AppTheme.primary,
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text(
           'Create Room',
@@ -315,16 +317,16 @@ class _RoomsScreenState extends State<RoomsScreen> {
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.1),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(0),
                       borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(0),
                       borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFF6C5CE7), width: 2),
+                      borderRadius: BorderRadius.circular(0),
+                      borderSide: BorderSide(color: AppTheme.primary, width: 2),
                     ),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   ),
@@ -425,6 +427,13 @@ class _RoomsScreenState extends State<RoomsScreen> {
                         }).toList();
                       }
 
+                      // Sort by rating (highest first)
+                      filteredRooms.sort((a, b) {
+                        final ratingA = a.averageRating ?? 0.0;
+                        final ratingB = b.averageRating ?? 0.0;
+                        return ratingB.compareTo(ratingA); // Descending order
+                      });
+
                       if (filteredRooms.isEmpty) {
                         return Container(
                           padding: const EdgeInsets.all(24),
@@ -472,7 +481,15 @@ class _RoomsScreenState extends State<RoomsScreen> {
                         );
                       }
 
-                      return ListView.builder(
+                      // GridView with 4 columns
+                      return GridView.builder(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 4,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          childAspectRatio: 0.75, // Adjust based on card height/width ratio
+                        ),
+                        padding: const EdgeInsets.all(16),
                         itemCount: filteredRooms.length,
                         itemBuilder: (context, index) {
                           final room = filteredRooms[index];
@@ -537,6 +554,13 @@ class _RoomsScreenState extends State<RoomsScreen> {
                         }).toList();
                       }
 
+                      // Sort by rating (highest first)
+                      rooms.sort((a, b) {
+                        final ratingA = a.averageRating ?? 0.0;
+                        final ratingB = b.averageRating ?? 0.0;
+                        return ratingB.compareTo(ratingA); // Descending order
+                      });
+
                       if (rooms.isEmpty) {
                         return Container(
                           padding: const EdgeInsets.all(24),
@@ -560,7 +584,15 @@ class _RoomsScreenState extends State<RoomsScreen> {
                         );
                       }
 
-                      return ListView.builder(
+                      // GridView with 4 columns
+                      return GridView.builder(
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 4,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          childAspectRatio: 0.75,
+                        ),
+                        padding: const EdgeInsets.all(16),
                         itemCount: rooms.length,
                         itemBuilder: (context, index) {
                           final room = rooms[index];
@@ -576,126 +608,259 @@ class _RoomsScreenState extends State<RoomsScreen> {
   }
 
   Widget _buildRoomCard(BuildContext context, Room room, FirestoreService firestoreService) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF1a1a2e),
-            Color(0xFF16213e),
-            Color(0xFF0f3460),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
-          width: 1,
-        ),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: room.roomType == RoomType.private
-                ? Colors.orange.withValues(alpha: 0.2)
-                : Colors.redAccent.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            room.roomType == RoomType.private
-                ? Icons.lock
-                : Icons.play_circle_outline,
-            color: room.roomType == RoomType.private
-                ? Colors.orange
-                : Colors.redAccent,
-          ),
-        ),
-        title: Text(
-          room.name,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              room.description ?? 'No description',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
-              ),
+    return FutureBuilder<VideoContent?>(
+      future: firestoreService.getVideoById(room.contentId),
+      builder: (context, videoSnapshot) {
+        final video = videoSnapshot.data;
+        final thumbnailUrl = video?.thumbnailUrl;
+        
+        final now = DateTime.now();
+        final roomTime = room.createdAt ?? now;
+        final timeLabel = _formatRoomTime(roomTime);
+
+        return GestureDetector(
+          onTap: () {
+            _navigateToRoomWithVerification(room);
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: AppTheme.cardBackground,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  blurRadius: 15,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
-            // Rating display (only for public rooms)
-            if (room.roomType == RoomType.public && room.averageRating != null) ...[
-              const SizedBox(height: 4),
-              Row(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Stack(
                 children: [
-                  const Icon(
-                    Icons.star,
-                    color: Colors.amber,
-                    size: 14,
+                  // Thumbnail background
+                  if (thumbnailUrl != null && thumbnailUrl.isNotEmpty)
+                    Positioned.fill(
+                      child: Image.network(
+                        thumbnailUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: AppTheme.bgStart,
+                          );
+                        },
+                      ),
+                    )
+                  else
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              AppTheme.bgStart,
+                              AppTheme.primary.withValues(alpha: 0.3),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  // Gradient overlay
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withValues(alpha: 0.9),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${room.averageRating!.toStringAsFixed(1)} (${room.totalRatings} ${room.totalRatings == 1 ? 'rating' : 'ratings'})',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                  // Content
+                  Positioned.fill(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Time/Date Label and Delete button
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      timeLabel,
+                                      style: const TextStyle(
+                                        color: Colors.black,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    if (room.roomType == RoomType.private) ...[
+                                      const SizedBox(width: 6),
+                                      const Icon(
+                                        Icons.lock,
+                                        size: 14,
+                                        color: Colors.black,
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              // Delete button for host
+                              Builder(
+                                builder: (context) {
+                                  final authService = Provider.of<AuthService>(context, listen: false);
+                                  final currentUserId = authService.currentUser?.uid;
+                                  final isHost = currentUserId == room.hostId;
+                                  
+                                  if (isHost) {
+                                    return IconButton(
+                                      icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                                      onPressed: () => _showDeleteRoomDialog(context, room),
+                                      tooltip: 'Delete Room',
+                                    );
+                                  }
+                                  return const SizedBox.shrink();
+                                },
+                              ),
+                            ],
+                          ),
+                          const Spacer(),
+                          // Room Title
+                          Text(
+                            room.name.toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.0,
+                              height: 1.2,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (room.team1Name != null && room.team2Name != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              '${room.team1Name} vs ${room.team2Name}',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 8),
+                          // Participants count and rating
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.people,
+                                color: Colors.white.withValues(alpha: 0.8),
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '${room.participants.length} watching',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              if (room.averageRating != null) ...[
+                                const SizedBox(width: 16),
+                                const Icon(
+                                  Icons.star,
+                                  color: Colors.amber,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${room.averageRating!.toStringAsFixed(1)}',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.8),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          // Join Now Button
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                _navigateToRoomWithVerification(room);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.accent,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                              ),
+                              child: const Text(
+                                'JOIN NOW',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.5,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
-            ],
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                '${room.participants.length} 👤',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
             ),
-            // Delete button for host's rooms
-            Builder(
-              builder: (context) {
-                final authService = Provider.of<AuthService>(context, listen: false);
-                final currentUserId = authService.currentUser?.uid;
-                final isHost = currentUserId == room.hostId;
-                
-                if (isHost) {
-                  return IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
-                    onPressed: () => _showDeleteRoomDialog(context, room),
-                    tooltip: 'Delete Room',
-                    padding: const EdgeInsets.only(left: 8),
-                    constraints: const BoxConstraints(),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-          ],
-        ),
-        onTap: () {
-          _navigateToRoomWithVerification(room);
-        },
-      ),
+          ),
+        );
+      },
     );
+  }
+
+  String _formatRoomTime(DateTime roomTime) {
+    final now = DateTime.now();
+    final difference = now.difference(roomTime);
+
+    if (difference.inDays == 0) {
+      final hour = roomTime.hour.toString().padLeft(2, '0');
+      final minute = roomTime.minute.toString().padLeft(2, '0');
+      return 'TODAY $hour:$minute';
+    } else if (difference.inDays == 1) {
+      return 'YESTERDAY';
+    } else if (difference.inDays < 7) {
+      final weekdays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+      return '${weekdays[roomTime.weekday - 1]} ${roomTime.day} ${roomTime.month.toString().padLeft(2, '0')}';
+    } else {
+      return '${roomTime.day} ${_getMonthAbbr(roomTime.month)} ${roomTime.hour.toString().padLeft(2, '0')}:${roomTime.minute.toString().padLeft(2, '0')}';
+    }
+  }
+
+  String _getMonthAbbr(int month) {
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    return months[month - 1];
   }
 }

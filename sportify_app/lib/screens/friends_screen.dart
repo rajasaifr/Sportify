@@ -5,6 +5,7 @@ import 'package:sportify_app/models/user_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/screens/add_friend_screen.dart';
+import 'package:sportify_app/theme/app_theme.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
