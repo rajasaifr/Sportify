@@ -15,7 +15,6 @@ import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/profile_service.dart';
 import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/theme/app_theme.dart';
-import 'package:sportify_app/widgets/floating_emitter.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -97,11 +96,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _availableTeams = teams;
           _isLoadingTeams = false;
-          // Remove teams that don't belong to the newly selected sport
-          _selectedTeams.removeWhere((teamName) {
-            return !teams.any((team) => team.name == teamName);
-          });
-          _onTeamsUpdated(_selectedTeams);
+          // Don't remove teams from _selectedTeams - preserve all selected teams across sports
+          // Teams are only removed when user explicitly deselects them
         });
       }
     } catch (e) {
@@ -698,29 +694,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
-        child: Stack(
-          children: [
-            // 1. FLOATING EMITTER (Background Layer)
-            const Positioned.fill(
-              child: FloatingEmitter(
-                // --- JPG ASSET PATHS ---
-                assetPaths: [
-                  'assets/images/floating_icons/basketball.jpg',
-                  'assets/images/floating_icons/bat.jpg',
-                  'assets/images/floating_icons/glove.jpg',
-                  'assets/images/floating_icons/helmet.jpg',
-                  'assets/images/floating_icons/racket.jpg',
-                  'assets/images/floating_icons/soccer_ball.jpg',
-                ],
-                emissionInterval: Duration(milliseconds: 500),
-                particleDuration: Duration(seconds: 20),
-                particleSizeMin: 25.0, // Smaller icons
-                particleSizeMax: 45.0, // Smaller icons
-                maxParticles: 16, // Slightly increased
-              ),
-            ),
-            // 2. MAIN CONTENT (Foreground Layer)
-            SafeArea(
+        child: SafeArea(
               child: Column(
                 children: [
                   // AppBar
@@ -835,8 +809,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
-          ],
-        ),
       ),
     );
   }

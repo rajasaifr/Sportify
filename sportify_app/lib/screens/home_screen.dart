@@ -15,6 +15,7 @@ import 'package:sportify_app/screens/room_screen.dart';
 import 'package:sportify_app/theme/app_theme.dart';
 import 'package:sportify_app/widgets/neon_button.dart';
 import 'package:sportify_app/widgets/floating_emitter.dart';
+import 'dart:ui'; // Add this import for ImageFilter
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -60,37 +61,11 @@ class _HomeScreenState extends State<HomeScreen>
       backgroundColor: AppTheme.bgStart,
       body: Container(
         decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment.topLeft,
-            radius: 1.5,
-            colors: [
-              Color(0xFF0A0A0F),
-              Color(0xFF000000),
-            ],
-          ),
+          color: Colors.black, // Pure black background
         ),
         child: Stack(
           children: [
-            // 1. FLOATING EMITTER (Background Layer)
-            const Positioned.fill(
-              child: FloatingEmitter(
-                // --- JPG ASSET PATHS ---
-                assetPaths: [
-                  'assets/images/floating_icons/basketball.jpg',
-                  'assets/images/floating_icons/bat.jpg',
-                  'assets/images/floating_icons/glove.jpg',
-                  'assets/images/floating_icons/helmet.jpg',
-                  'assets/images/floating_icons/racket.jpg',
-                  'assets/images/floating_icons/soccer_ball.jpg',
-                ],
-                emissionInterval: Duration(milliseconds: 500),
-                particleDuration: Duration(seconds: 20),
-                particleSizeMin: 25.0, // Smaller icons
-                particleSizeMax: 45.0, // Smaller icons
-                maxParticles: 16, // Slightly increased
-              ),
-            ),
-            // 2. MAIN CONTENT (Foreground Layer)
+            // MAIN CONTENT (No floating particles)
             Column(
               children: [
                 // Merged AppBar with Tabs, Logo, and Profile in one line
@@ -101,7 +76,7 @@ class _HomeScreenState extends State<HomeScreen>
                     controller: _tabController,
                     children: [
                       _buildLobbyView(context),
-                      const RoomsScreen(), // Changed from CreateRoomScreen to RoomsScreen
+                      const RoomsScreen(),
                       const FriendsScreen(),
                     ],
                   ),
@@ -128,53 +103,17 @@ class _HomeScreenState extends State<HomeScreen>
       ),
       child: Row(
         children: [
-          // Sportify Logo with Neon Glow
+          // Sportify Text (matching login page style)
           GestureDetector(
             onTap: _goToLobby,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.black,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primary.withValues(alpha: 0.5),
-                        blurRadius: 15,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                    border: Border.all(
-                      color: AppTheme.primary.withValues(alpha: 0.6),
-                      width: 2,
-                    ),
-                    image: const DecorationImage(
-                      image: AssetImage('assets/images/App_Icon.png'),
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ShaderMask(
-                  shaderCallback: (bounds) => const LinearGradient(
-                    colors: [Colors.white, AppTheme.primary],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ).createShader(bounds),
-                  child: const Text(
-                    'SPORTIFY',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2.0,
-                      fontSize: 20,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
+            child: const Text(
+              'SPORTIFY',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2.0,
+                color: Colors.white,
+              ),
             ),
           ),
           const SizedBox(width: 24),
@@ -765,310 +704,521 @@ class _HomeScreenState extends State<HomeScreen>
     return StreamBuilder<List<Room>>(
       stream: firestoreService.getPublicRoomsStream(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Container(
-            height: 400,
-            margin: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF1A0A2E), // Dark purple (opaque)
-                  AppTheme.bgStart,
-                ],
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Column(
+            children: [
+              _buildHeroBanner(context, null, []),
+              const SizedBox(height: 20),
+              const Center(
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                ),
               ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppTheme.primary.withValues(alpha: 0.3),
-                width: 1,
-              ),
-            ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.sports_esports,
-                    size: 64,
-                    color: AppTheme.primary.withValues(alpha: 0.5),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No Featured Rooms',
-                    style: TextStyle(
-                      color: AppTheme.textFaint,
-                      fontSize: 18,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            ],
           );
         }
 
-        final featuredRoom = snapshot.data!.first;
-        return FutureBuilder<VideoContent?>(
-          future: firestoreService.getVideoById(featuredRoom.contentId),
-          builder: (context, videoSnapshot) {
-            final video = videoSnapshot.data;
-            final thumbnailUrl = video?.thumbnailUrl;
+        // Get top 4-5 rooms sorted by participant count
+        final rooms = snapshot.hasData
+            ? snapshot.data!
+                .where((room) => room.roomType == RoomType.public)
+                .toList()
+            : <Room>[];
+        rooms.sort((a, b) => b.participants.length.compareTo(a.participants.length));
+        final topRooms = rooms.take(5).toList();
 
-            return Container(
-              width: double.infinity,
-              height: 400,
-              margin: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primary.withValues(alpha: 0.3),
-                    blurRadius: 30,
-                    spreadRadius: 5,
+        return _buildHeroBanner(context, topRooms.length, topRooms, firestoreService);
+      },
+    );
+  }
+
+  Widget _buildHeroBanner(BuildContext context, int? roomCount, List<Room> topRooms, [FirestoreService? firestoreService]) {
+    return Container(
+      height: 600, // Increased height to cover cards
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: NetworkImage(
+            'https://images.unsplash.com/photo-1637421894898-13740d20a36e?w=1200&auto=format&fit=crop&q=80&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDI3fHx8ZW58MHx8fHx8',
+          ),
+          fit: BoxFit.cover,
+        ),
+        borderRadius: BorderRadius.circular(0),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.black.withValues(alpha: 0.2),
+              Colors.black.withValues(alpha: 0.7),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(0),
+        ),
+        child: Stack(
+          children: [
+            // Text Overlay on Left
+            Positioned(
+              left: 40,
+              bottom: 220, // Adjusted position to be above cards
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Front row seats for every\nGame Night',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 36,
+                      fontWeight: FontWeight.w900,
+                      height: 1.2,
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: 500,
+                    child: Text(
+                      'Join the most active rooms and watch live sports with fans from around the world. Experience real-time reactions, discussions, and the thrill of the game together.',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 16,
+                        height: 1.5,
+                      ),
+                    ),
                   ),
                 ],
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    // Video Thumbnail Background
-                    if (thumbnailUrl != null && thumbnailUrl.isNotEmpty)
-                      Positioned.fill(
-                        child: Image.network(
-                          thumbnailUrl,
-                          fit: BoxFit.cover,
-                          alignment: Alignment.center,
-                          errorBuilder: (context, error, stackTrace) {
-                            // Fallback to gradient if image fails to load
-                            return Container(
-                              decoration: const BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Color(0xFF1A0A2E),
-                                    AppTheme.bgStart,
-                                    AppTheme.bgEnd,
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            // Show gradient while loading
-                            return Container(
-                              decoration: const BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Color(0xFF1A0A2E),
-                                    AppTheme.bgStart,
-                                    AppTheme.bgEnd,
-                                  ],
-                                ),
-                              ),
-                              child: Center(
-                                child: CircularProgressIndicator(
-                                  value: loadingProgress.expectedTotalBytes != null
-                                      ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
-                                      : null,
-                                  color: AppTheme.primary,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      )
-                    else
-                      // Fallback gradient if no thumbnail
-                      Positioned.fill(
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Color(0xFF1A0A2E),
-                                AppTheme.bgStart,
-                                AppTheme.bgEnd,
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    // Gradient Overlay for text readability
-                    Container(
+            ),
+            // See More Button on Right
+            Positioned(
+              right: 40,
+              bottom: 260, // Adjusted position
+              child: TextButton(
+                onPressed: () {
+                  // Navigate to rooms screen or scroll to rooms section
+                  _tabController.animateTo(1); // Navigate to Rooms tab
+                },
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: 0.2),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(0),
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: const Text(
+                  'See more',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            // Event Cards Overlay at Bottom
+            if (firestoreService != null && topRooms.isNotEmpty)
+              Positioned(
+                bottom: 20,
+                left: 0,
+                right: 0,
+                child: SizedBox(
+                  height: 200,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: topRooms.length,
+                    itemBuilder: (context, index) {
+                      final room = topRooms[index];
+                      return _buildTopRoomCard(context, room, firestoreService);
+                    },
+                  ),
+                ),
+              )
+            else if (topRooms.isEmpty && firestoreService != null)
+              Positioned(
+                bottom: 20,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: Text(
+                    'No rooms available',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopRoomCard(
+      BuildContext context, Room room, FirestoreService firestoreService) {
+    return FutureBuilder<VideoContent?>(
+      future: firestoreService.getVideoById(room.contentId),
+      builder: (context, videoSnapshot) {
+        final video = videoSnapshot.data;
+        final thumbnailUrl = video?.thumbnailUrl;
+        
+        // Format room creation time or use current time
+        final now = DateTime.now();
+        final roomTime = room.createdAt ?? now;
+        final timeLabel = _formatRoomTime(roomTime);
+
+        return Container(
+          width: 300,
+          margin: const EdgeInsets.only(right: 16),
+          decoration: BoxDecoration(
+            color: AppTheme.cardBackground,
+            borderRadius: BorderRadius.circular(16), // Rounded corners
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.5),
+                blurRadius: 15,
+                spreadRadius: 2,
+                offset: const Offset(0, 5),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16), // Match container border radius
+            child: Stack(
+              children: [
+                // Thumbnail background
+                if (thumbnailUrl != null && thumbnailUrl.isNotEmpty)
+                  Positioned.fill(
+                    child: Image.network(
+                      thumbnailUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: AppTheme.bgStart,
+                        );
+                      },
+                    ),
+                  )
+                else
+                  Positioned.fill(
+                    child: Container(
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
                         gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                           colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.7),
-                            Colors.black.withValues(alpha: 0.9),
+                            AppTheme.bgStart,
+                            AppTheme.primary.withValues(alpha: 0.3),
                           ],
                         ),
                       ),
                     ),
-                    // Content Overlay
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: AppTheme.primary.withValues(alpha: 0.5),
-                          width: 2,
-                        ),
-                      ),
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          const Text(
-                            'FEATURED',
-                            style: TextStyle(
-                              color: AppTheme.primary,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 2.0,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            featuredRoom.name,
-                            style: const TextStyle(
-                              color: AppTheme.textMain,
-                              fontSize: 32,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                          if (featuredRoom.description != null) ...[
-                            const SizedBox(height: 12),
-                            Text(
-                              featuredRoom.description!,
-                              style: const TextStyle(
-                                color: AppTheme.textFaint,
-                                fontSize: 14,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                          const SizedBox(height: 20),
-                          NeonButton(
-                            onPressed: () {
-                              _navigateToRoomWithVerification(context, featuredRoom);
-                            },
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                              vertical: 14,
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.play_arrow, color: Colors.white),
-                                SizedBox(width: 8),
-                                Text(
-                                  'JOIN ROOM',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                    letterSpacing: 1.0,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                  ),
+                // Gradient overlay
+                Positioned.fill(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.9),
                         ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            );
-          },
+                // Content
+                Positioned.fill(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Time/Date Label
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20), // Pill shape
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                timeLabel,
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (room.roomType == RoomType.private) ...[
+                                const SizedBox(width: 6),
+                                const Icon(
+                                  Icons.lock,
+                                  size: 14,
+                                  color: Colors.black,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const Spacer(),
+                        // Room Title
+                        Text(
+                          room.name.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.0,
+                            height: 1.2,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (room.team1Name != null && room.team2Name != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            '${room.team1Name} vs ${room.team2Name}',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 8),
+                        // Participants count
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.people,
+                              color: Colors.white.withValues(alpha: 0.8),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${room.participants.length} watching',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Join Now Button
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              _navigateToRoomWithVerification(context, room);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.accent,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12), // Rounded button
+                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            child: const Text(
+                              'JOIN NOW',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.5,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
+  }
+
+  String _formatRoomTime(DateTime roomTime) {
+    final now = DateTime.now();
+    final difference = now.difference(roomTime);
+
+    if (difference.inDays == 0) {
+      // Today
+      final hour = roomTime.hour.toString().padLeft(2, '0');
+      final minute = roomTime.minute.toString().padLeft(2, '0');
+      return 'TODAY $hour:$minute';
+    } else if (difference.inDays == 1) {
+      return 'YESTERDAY';
+    } else if (difference.inDays < 7) {
+      final weekdays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+      return '${weekdays[roomTime.weekday - 1]} ${roomTime.day} ${roomTime.month.toString().padLeft(2, '0')}';
+    } else {
+      return '${roomTime.day} ${_getMonthAbbr(roomTime.month)} ${roomTime.hour.toString().padLeft(2, '0')}:${roomTime.minute.toString().padLeft(2, '0')}';
+    }
+  }
+
+  String _getMonthAbbr(int month) {
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    return months[month - 1];
+  }
+
+  // Helper method to get sport-specific background image
+  String _getSportBackgroundImage(String sportName) {
+    final sportLower = sportName.toLowerCase();
+    if (sportLower.contains('rugby')) {
+      return 'https://images.unsplash.com/photo-1495329144860-da404d597791?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
+    } else if (sportLower.contains('football') || sportLower.contains('soccer')) {
+      return 'https://images.unsplash.com/photo-1676746424139-77f8bd8922a8?q=80&w=436&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
+    } else if (sportLower.contains('basketball')) {
+      return 'https://images.unsplash.com/photo-1533923156502-be31530547c4?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
+    } else if (sportLower.contains('cricket')) {
+      return 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?q=80&w=1005&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
+    } else if (sportLower.contains('f1') || sportLower.contains('formula')) {
+      return 'https://images.unsplash.com/photo-1742744652734-d5ec6598b5da?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D';
+    }
+    // Default image (the original one)
+    return 'https://images.unsplash.com/photo-1637421894898-13740d20a36e?w=1200&auto=format&fit=crop&q=80&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1yZWxhdGVkfDI3fHx8ZW58MHx8fHx8';
   }
 
   Widget _buildSportRow(BuildContext context, Sport sport) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              Icon(
-                _getSportIcon(sport.name),
-                color: AppTheme.primary,
-                size: 24,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                sport.name.toUpperCase(),
-                style: const TextStyle(
-                  color: AppTheme.textMain,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.5,
-                ),
-              ),
+        // Hero Banner for Sport with Teams Overlay
+        _buildSportHeroBanner(context, sport),
+        const SizedBox(height: 32),
+      ],
+    );
+  }
+
+  Widget _buildSportHeroBanner(BuildContext context, Sport sport) {
+    return Container(
+      height: 600,
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        image: DecorationImage(
+          image: NetworkImage(_getSportBackgroundImage(sport.name)),
+          fit: BoxFit.cover,
+        ),
+        borderRadius: BorderRadius.circular(0),
+      ),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.black.withValues(alpha: 0.2),
+              Colors.black.withValues(alpha: 0.7),
             ],
           ),
+          borderRadius: BorderRadius.circular(0),
         ),
-        const SizedBox(height: 12),
-        FutureBuilder<List<Team>>(
-          future: Provider.of<FirestoreService>(context, listen: false)
-              .getTeamsBySport(sport.name, limit: 10),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const SizedBox(
-                height: 180,
-                child: Center(
-                  child: CircularProgressIndicator(
-                    color: AppTheme.primary,
-                    strokeWidth: 2,
+        child: Stack(
+          children: [
+            // Text Overlay on Top Left
+            Positioned(
+              left: 40,
+              top: 40, // Changed from bottom to top
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${sport.name} on SPORTIFY',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 36,
+                      fontWeight: FontWeight.w900,
+                      height: 1.2,
+                      letterSpacing: -0.5,
+                    ),
                   ),
-                ),
-              );
-            }
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: 500,
+                    child: Text(
+                      'Watch live ${sport.name.toLowerCase()} matches, highlights, and join active rooms with fans from around the world.',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 16,
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Team Cards Overlay at Bottom - Fit horizontally
+            Positioned(
+              bottom: 20,
+              left: 0,
+              right: 0,
+              child: FutureBuilder<List<Team>>(
+                future: Provider.of<FirestoreService>(context, listen: false)
+                    .getTeamsBySport(sport.name, limit: 6), // Limit to 5-6 teams
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const SizedBox(
+                      height: 200,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                        ),
+                      ),
+                    );
+                  }
 
-            if (snapshot.hasError ||
-                !snapshot.hasData ||
-                snapshot.data!.isEmpty) {
-              return const SizedBox.shrink();
-            }
+                  if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
 
-            final teams = snapshot.data!;
-
-            return SizedBox(
-              height: 200,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                physics:
-                    const BouncingScrollPhysics(), // Smooth horizontal scrolling
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: teams.length,
-                itemBuilder: (context, index) {
-                  final team = teams[index];
-                  return _buildTeamCard(context, team);
+                  final teams = snapshot.data!;
+                  // Calculate card width to fit all cards horizontally
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      final availableWidth = constraints.maxWidth - 32; // Account for padding
+                      final cardWidth = (availableWidth / teams.length) - 12; // Divide by team count, subtract margin
+                      
+                      return SizedBox(
+                        height: 200,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: teams.map((team) {
+                            return Container(
+                              width: cardWidth,
+                              margin: const EdgeInsets.symmetric(horizontal: 6),
+                              child: _buildTeamCard(context, team),
+                            );
+                          }).toList(),
+                        ),
+                      );
+                    },
+                  );
                 },
               ),
-            );
-          },
+            ),
+          ],
         ),
-        const SizedBox(height: 24),
-      ],
+      ),
     );
   }
 
@@ -1082,50 +1232,84 @@ class _HomeScreenState extends State<HomeScreen>
       width: _isSidebarOpen ? 160.0 : 200.0,
       height: cardHeight,
       margin: const EdgeInsets.only(right: 12),
-      child: NeonButton(
-        onPressed: () {
+      child: GestureDetector(
+        onTap: () {
           _showTeamOptionsMenu(context, team);
         },
-        isOutlined: true,
-        backgroundColor:
-            AppTheme.bgStart, // Opaque background to block floating icons
-        padding: EdgeInsets.zero,
-        borderRadius: 12,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Display team logo if available, otherwise show placeholder
-            if (team.logoUrl != null && team.logoUrl!.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  team.logoUrl!,
-                  width: 70,
-                  height: 70,
-                  fit: BoxFit.contain, // Changed to contain to show full logo
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      width: 70,
-                      height: 70,
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16), // Rounded corners
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Blur effect
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.3), // Semi-transparent black
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.1), // Subtle border
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.8), // Dark shadow
+                    blurRadius: 20,
+                    spreadRadius: 3,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Display team logo if available, otherwise show placeholder
+                  if (team.logoUrl != null && team.logoUrl!.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        team.logoUrl!,
+                        width: 70,
+                        height: 70,
+                        fit: BoxFit.contain,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            width: 70,
+                            height: 70,
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                                strokeWidth: 2,
+                                color: AppTheme.primary,
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            width: 70,
+                            height: 70,
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.sports,
+                              color: AppTheme.primary,
+                              size: 35,
+                            ),
+                          );
+                        },
                       ),
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
-                              : null,
-                          strokeWidth: 2,
-                          color: AppTheme.primary,
-                        ),
-                      ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
+                    )
+                  else
+                    Container(
                       width: 70,
                       height: 70,
                       decoration: BoxDecoration(
@@ -1137,51 +1321,37 @@ class _HomeScreenState extends State<HomeScreen>
                         color: AppTheme.primary,
                         size: 35,
                       ),
-                    );
-                  },
-                ),
-              )
-            else
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.sports,
-                  color: AppTheme.primary,
-                  size: 35,
-                ),
-              ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                team.name,
-                style: const TextStyle(
-                  color: AppTheme.textMain,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                    ),
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: Text(
+                      team.name,
+                      style: const TextStyle(
+                        color: AppTheme.textMain,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (team.country != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      team.country!,
+                      style: const TextStyle(
+                        color: AppTheme.textFaint,
+                        fontSize: 11,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ],
               ),
             ),
-            if (team.country != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                team.country!,
-                style: const TextStyle(
-                  color: AppTheme.textFaint,
-                  fontSize: 11,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );

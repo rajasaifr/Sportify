@@ -7,6 +7,7 @@ import 'package:sportify_app/models/sport_model.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/screens/room_screen.dart';
+import 'package:sportify_app/theme/app_theme.dart';
 
 class CreateRoomScreen extends StatefulWidget {
   const CreateRoomScreen({super.key});
@@ -192,11 +193,11 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          backgroundColor: containerGradient1,
+          backgroundColor: AppTheme.cardBackground,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: BorderSide(
-              color: purpleButton.withValues(alpha: 0.5),
+              color: AppTheme.accent.withValues(alpha: 0.5),
               width: 1,
             ),
           ),
@@ -232,7 +233,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: purpleButton, width: 2),
+                    borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                   ),
                 ),
                 textAlign: TextAlign.center,
@@ -268,7 +269,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: purpleButton,
+                backgroundColor: AppTheme.primary,
               ),
               child: const Text('Join'),
             ),
@@ -285,11 +286,11 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: containerGradient1,
+        backgroundColor: AppTheme.cardBackground,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: purpleButton.withValues(alpha: 0.5),
+            color: AppTheme.accent.withValues(alpha: 0.5),
             width: 1,
           ),
         ),
@@ -381,54 +382,64 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     }
   }
 
-  // Color scheme matching login page
-  static const Color purpleButton = Color(0xFF6C5CE7);
-  static const Color containerGradient1 = Color(0xFF1a1a2e);
-  static const Color containerGradient2 = Color(0xFF16213e);
-  static const Color containerGradient3 = Color(0xFF0f3460);
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1a1a2e),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF1a1a2e),
-        elevation: 0,
-        title: const Text(
-          'Create New Room',
-          style: TextStyle(color: Colors.white),
+      backgroundColor: AppTheme.bgStart,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.topLeft,
+            radius: 1.5,
+            colors: [
+              Color(0xFF0A0A0F),
+              Color(0xFF000000),
+            ],
+          ),
         ),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Center(
-                child: Container(
-                  constraints: const BoxConstraints(maxWidth: 420),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        containerGradient1,
-                        containerGradient2,
-                        containerGradient3,
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blue.withValues(alpha: 0.3),
-                        blurRadius: 30,
-                        offset: const Offset(0, 8),
-                        spreadRadius: 2,
+        child: Scaffold(
+          backgroundColor: Colors.transparent,
+          appBar: AppBar(
+            backgroundColor: AppTheme.bgStart.withValues(alpha: 0.95),
+            elevation: 0,
+            title: const Text(
+              'Create New Room',
+              style: TextStyle(color: AppTheme.textMain),
+            ),
+            iconTheme: const IconThemeData(color: AppTheme.textMain),
+          ),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 420),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppTheme.cardBackground,
+                            AppTheme.bgStart,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppTheme.primary.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primary.withValues(alpha: 0.3),
+                            blurRadius: 30,
+                            offset: const Offset(0, 8),
+                            spreadRadius: 2,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
                   padding: const EdgeInsets.all(32.0),
                   child: Form(
                     key: _formKey,
@@ -478,7 +489,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: purpleButton, width: 2),
+                                  borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16,
@@ -527,7 +538,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: purpleButton, width: 2),
+                                  borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16,
@@ -589,8 +600,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                                     style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                                   ),
                                   isExpanded: true,
-                                  dropdownColor: containerGradient1,
-                                  style: const TextStyle(color: Colors.white),
+                                  dropdownColor: AppTheme.cardBackground,
+                                  style: const TextStyle(color: AppTheme.textMain),
                                   decoration: InputDecoration(
                                     filled: true,
                                     fillColor: Colors.white.withValues(alpha: 0.1),
@@ -604,7 +615,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                                     ),
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(8),
-                                      borderSide: const BorderSide(color: purpleButton, width: 2),
+                                      borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                                     ),
                                     contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 16,
@@ -686,8 +697,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                                             style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 14),
                                           ),
                                           isExpanded: true,
-                                          dropdownColor: containerGradient1,
-                                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                                  dropdownColor: AppTheme.cardBackground,
+                                  style: const TextStyle(color: AppTheme.textMain, fontSize: 14),
                                           decoration: InputDecoration(
                                             filled: true,
                                             fillColor: Colors.white.withValues(alpha: 0.1),
@@ -701,7 +712,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                                             ),
                                             focusedBorder: OutlineInputBorder(
                                               borderRadius: BorderRadius.circular(8),
-                                              borderSide: const BorderSide(color: purpleButton, width: 2),
+                                              borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                                             ),
                                             contentPadding: const EdgeInsets.symmetric(
                                               horizontal: 12,
@@ -784,8 +795,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                                             style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 14),
                                           ),
                                           isExpanded: true,
-                                          dropdownColor: containerGradient1,
-                                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                                  dropdownColor: AppTheme.cardBackground,
+                                  style: const TextStyle(color: AppTheme.textMain, fontSize: 14),
                                           decoration: InputDecoration(
                                             filled: true,
                                             fillColor: Colors.white.withValues(alpha: 0.1),
@@ -799,7 +810,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                                             ),
                                             focusedBorder: OutlineInputBorder(
                                               borderRadius: BorderRadius.circular(8),
-                                              borderSide: const BorderSide(color: purpleButton, width: 2),
+                                              borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                                             ),
                                             contentPadding: const EdgeInsets.symmetric(
                                               horizontal: 12,
@@ -880,8 +891,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                                     style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                                   ),
                                   isExpanded: true,
-                                  dropdownColor: containerGradient1,
-                                  style: const TextStyle(color: Colors.white),
+                                  dropdownColor: AppTheme.cardBackground,
+                                  style: const TextStyle(color: AppTheme.textMain),
                                   decoration: InputDecoration(
                                     filled: true,
                                     fillColor: Colors.white.withValues(alpha: 0.1),
@@ -895,7 +906,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                                     ),
                                     focusedBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(8),
-                                      borderSide: const BorderSide(color: purpleButton, width: 2),
+                                      borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                                     ),
                                     contentPadding: const EdgeInsets.symmetric(
                                       horizontal: 16,
@@ -940,8 +951,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                             DropdownButtonFormField<RoomType>(
                               // ignore: deprecated_member_use
                               value: _selectedRoomType,
-                              dropdownColor: containerGradient1,
-                              style: const TextStyle(color: Colors.white),
+                              dropdownColor: AppTheme.cardBackground,
+                              style: const TextStyle(color: AppTheme.textMain),
                               decoration: InputDecoration(
                                 filled: true,
                                 fillColor: Colors.white.withValues(alpha: 0.1),
@@ -955,7 +966,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(color: purpleButton, width: 2),
+                                  borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 16,
@@ -991,7 +1002,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _submitCreateRoom,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: purpleButton,
+                              backgroundColor: AppTheme.primary,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
@@ -1021,7 +1032,9 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                   ),
                 ),
               ),
-            ],
+                ],
+              ),
+            ),
           ),
         ),
       ),
