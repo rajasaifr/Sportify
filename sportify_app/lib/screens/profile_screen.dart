@@ -682,58 +682,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.bgStart,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment.topLeft,
-            radius: 1.5,
-            colors: [
-              Color(0xFF0A0A0F),
-              Color(0xFF000000),
-            ],
+      backgroundColor: Colors.black, // Pure black background
+      body: Stack(
+        children: [
+          // Background image
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/Account_BG.png',
+              fit: BoxFit.cover,
+            ),
           ),
-        ),
-        child: SafeArea(
-              child: Column(
-                children: [
-                  // AppBar
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.bgStart.withValues(alpha: 0.95),
-                      border: Border(
-                        bottom: BorderSide(
-                          color: AppTheme.primary.withValues(alpha: 0.2),
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back, color: AppTheme.textMain),
-                          onPressed: () => Navigator.of(context).pop(),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'MANAGE ACCOUNT',
-                          style: TextStyle(
-                            color: AppTheme.textMain,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
-                      ],
+          // Content on top
+          Column(
+            children: [
+              // AppBar
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppTheme.bgStart.withValues(alpha: 0.95),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: AppTheme.primary.withValues(alpha: 0.2),
+                      width: 1,
                     ),
                   ),
-                  // Scrollable Content
-                  Expanded(
-                    child: Center(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
-                        child: Container(
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: AppTheme.textMain),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'MANAGE ACCOUNT',
+                      style: TextStyle(
+                        color: AppTheme.textMain,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Scrollable Content
+              Expanded(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
+                    child: Stack(
+                      children: [
+                        // Background image behind the box
+                        Positioned.fill(
+                          child: Image.asset(
+                            'assets/images/Account_BG.png',
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        // Manage account box
+                        Container(
                           constraints: const BoxConstraints(maxWidth: 800),
                           decoration: BoxDecoration(
                             color: const Color(0xFF0A0A0A), // Card color
@@ -803,12 +811,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
+          ),
+        ],
       ),
     );
   }

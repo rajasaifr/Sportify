@@ -37,3 +37,4 @@ flutter:
   assets:
     - assets/images/ # Registers your App_Icon.png folder (Best practice)
     - assets/images/floating_icons/  # KEEP THIS COMMENTED OUT UNTIL YOU CREATE THE FOLDER AND ADD SVG FILES
+    - assets/images/Account_BG.png

@@ -22,9 +22,9 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.bgStart,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: AppTheme.bgStart,
+        backgroundColor: Colors.black, // Changed from Colors.transparent
         elevation: 0,
         title: const Text(
           'Add Friends',
@@ -32,13 +32,25 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
         ),
         iconTheme: const IconThemeData(color: AppTheme.textMain),
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // Search Bar
-          _buildSearchBar(),
-          
-          // Search Results or Empty State
-          _buildSearchResults(),
+          // Background image
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/Account_BG.png',
+              fit: BoxFit.cover,
+            ),
+          ),
+          // Content on top
+          Column(
+            children: [
+              // Search Bar
+              _buildSearchBar(),
+              
+              // Search Results or Empty State
+              _buildSearchResults(),
+            ],
+          ),
         ],
       ),
     );

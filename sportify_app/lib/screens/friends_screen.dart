@@ -18,11 +18,23 @@ class _FriendsScreenState extends State<FriendsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black, // Pure black background
-      body: Column(
+      backgroundColor: Colors.transparent, // Changed from Colors.black
+      body: Stack(
         children: [
-          _buildSearchBar(),
-          _buildTabsSection(),
+          // Background image
+          Positioned.fill(
+            child: Image.asset(
+              'assets/images/Account_BG.png',
+              fit: BoxFit.cover,
+            ),
+          ),
+          // Content on top
+          Column(
+            children: [
+              _buildSearchBar(),
+              _buildTabsSection(),
+            ],
+          ),
         ],
       ),
     );
@@ -31,6 +43,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   Widget _buildSearchBar() {
     return Container(
       padding: const EdgeInsets.all(20.0),
+      color: Colors.transparent, // Make transparent so image shows
       child: Row(
         children: [
           const Expanded(
@@ -71,7 +84,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
         child: Column(
           children: [
             Container(
-              color: Colors.black,
+              color: Colors.transparent, // Changed from Colors.black
               child: TabBar(
                 indicatorColor: AppTheme.primary, // Dark greenish blue
                 labelColor: Colors.white,
@@ -84,7 +97,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             ),
             Expanded(
               child: Container(
-                color: Colors.black,
+                color: Colors.transparent, // Changed from Colors.black
                 child: TabBarView(
                   children: [
                     _buildFriendsList(),
@@ -156,6 +169,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             constraints: const BoxConstraints(maxWidth: 800), // Limit width for centering
             margin: const EdgeInsets.symmetric(vertical: 16),
             decoration: BoxDecoration(
+              color: Colors.transparent, // Explicitly transparent so image shows through
               border: Border(
                 left: BorderSide(
                   color: AppTheme.primary.withValues(alpha: 0.5),
@@ -273,6 +287,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             constraints: const BoxConstraints(maxWidth: 800), // Limit width for centering
             margin: const EdgeInsets.symmetric(vertical: 16),
             decoration: BoxDecoration(
+              color: Colors.transparent, // Explicitly transparent so image shows through
               border: Border(
                 left: BorderSide(
                   color: AppTheme.primary.withValues(alpha: 0.5),
