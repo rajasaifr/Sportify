@@ -77,7 +77,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(0),
-                    borderSide: BorderSide(color: AppTheme.primary, width: 2),
+                    borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                   ),
                 ),
                 textAlign: TextAlign.center,
@@ -402,7 +402,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(0), // Sharp corners
-                      borderSide: BorderSide(color: AppTheme.primary, width: 2),
+                      borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                     ),
                   ),
                 ),

@@ -4,7 +4,6 @@ import 'dart:async';
 // import 'dart:ui' as ui;
 // import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 // Image picker disabled for now - photo change functionality removed
 // import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -15,6 +14,7 @@ import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/services/profile_service.dart';
 import 'package:sportify_app/services/firestore_service.dart';
 import 'package:sportify_app/theme/app_theme.dart';
+import 'package:sportify_app/utils/logger.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -44,7 +44,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // Database data
   List<Sport> _availableSports = [];
   List<Team> _availableTeams = [];
-  bool _isLoadingSports = false;
   bool _isLoadingTeams = false;
   
   String? _currentProfilePicUrl;
@@ -67,19 +66,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadSports() async {
-    setState(() => _isLoadingSports = true);
     try {
       final firestoreService = Provider.of<FirestoreService>(context, listen: false);
       final sports = await firestoreService.getSports(limit: 100);
       if (mounted) {
         setState(() {
           _availableSports = sports;
-          _isLoadingSports = false;
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoadingSports = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error loading sports: $e')),
         );
@@ -278,8 +274,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // Determine the final profilePicUrl to save (keep existing, no new uploads)
       final finalProfilePicUrl = _currentProfilePicUrl;
       
-      print('Final profile picture URL: $finalProfilePicUrl');
-      print('Image upload disabled - preserving existing profile picture');
+      Logger.debug('Final profile picture URL: $finalProfilePicUrl', tag: 'ProfileScreen');
+      Logger.debug('Image upload disabled - preserving existing profile picture', tag: 'ProfileScreen');
       
       // Build update map - only include profilePicUrl if we have a new value to save
       final updateData = <String, dynamic>{
@@ -297,9 +293,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // } else {
       //   print('Not including profilePicUrl in update (preserving existing)');
       // }
-      print('Not including profilePicUrl in update (image upload disabled)');
+      Logger.debug('Not including profilePicUrl in update (image upload disabled)', tag: 'ProfileScreen');
       
-      print('Updating profile with data: $updateData');
+      Logger.debug('Updating profile with data: $updateData', tag: 'ProfileScreen');
       
       // Use updateUserFields to only update specific fields
       await profileService.updateProfileFields(
@@ -312,7 +308,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         },
       );
 
-      print('Profile update successful');
+      Logger.info('Profile update successful', tag: 'ProfileScreen');
 
       // Update current profile pic URL after successful save
       if (mounted) {
@@ -332,8 +328,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       }
     } catch (e, stackTrace) {
-      print('Error saving profile: $e');
-      print('Stack trace: $stackTrace');
+      Logger.error('Error saving profile', error: e, stackTrace: stackTrace, tag: 'ProfileScreen');
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

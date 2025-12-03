@@ -14,7 +14,6 @@ import 'package:sportify_app/screens/friends_screen.dart';
 import 'package:sportify_app/screens/room_screen.dart';
 import 'package:sportify_app/theme/app_theme.dart';
 import 'package:sportify_app/widgets/neon_button.dart';
-import 'package:sportify_app/widgets/floating_emitter.dart';
 import 'dart:ui'; // Add this import for ImageFilter
 
 class HomeScreen extends StatefulWidget {
@@ -1627,7 +1626,8 @@ class _HomeScreenState extends State<HomeScreen>
     // If room is private, ask for code
     if (room.roomType == RoomType.private) {
       final hasAccess = await _showRoomCodeDialog(context, room);
-      if (hasAccess && mounted) {
+      if (!mounted) return;
+      if (hasAccess) {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => RoomScreen(room: room),
@@ -1641,23 +1641,6 @@ class _HomeScreenState extends State<HomeScreen>
           builder: (context) => RoomScreen(room: room),
         ),
       );
-    }
-  }
-
-  IconData _getSportIcon(String sportName) {
-    switch (sportName.toLowerCase()) {
-      case 'football':
-        return Icons.sports_soccer;
-      case 'cricket':
-        return Icons.sports_cricket;
-      case 'basketball':
-        return Icons.sports_basketball;
-      case 'f1':
-        return Icons.speed;
-      case 'rugby':
-        return Icons.sports_rugby;
-      default:
-        return Icons.sports;
     }
   }
 
