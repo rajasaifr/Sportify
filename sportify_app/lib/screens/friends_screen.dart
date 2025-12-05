@@ -57,7 +57,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
             ),
           ),
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppTheme.primary, // Dark greenish blue
               shape: BoxShape.circle,
             ),
@@ -379,8 +379,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Friend request accepted!'),
+        const SnackBar(
+          content: Text('Friend request accepted!'),
           backgroundColor: AppTheme.primary,
         ),
       );
@@ -402,8 +402,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Friend request declined'),
+        const SnackBar(
+          content: Text('Friend request declined'),
           backgroundColor: AppTheme.primary,
         ),
       );

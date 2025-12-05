@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sportify_app/services/auth_service.dart';
 import 'package:sportify_app/utils/logger.dart';
-import 'package:sportify_app/theme/app_theme.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -30,9 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // New color scheme: Red, Dark Bluish Green, and Black
   static const Color darkBluishGreen = Color(0xFF0F4C3A);
-  static const Color mediumBluishGreen = Color(0xFF1B4332);
   static const Color lightBluishGreen = Color(0xFF2D5A47);
-  static const Color redAccent = Color(0xFFDC2626);
   static const Color backgroundColor = Color(0xFF000000);
   static const Color cardBackground = Color(0xFF0A0A0A);
 
@@ -167,36 +164,66 @@ class _LoginScreenState extends State<LoginScreen> {
           // Left Side - Image (70%)
           Expanded(
             flex: 7, // Changed from 1 to 7 (70%)
-            child: Container(
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: NetworkImage(
-                    'https://images.pexels.com/photos/269948/pexels-photo-269948.jpeg',
-                  ),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Background image with error handling
+                Image.network(
+                  'https://images.pexels.com/photos/269948/pexels-photo-269948.jpeg',
                   fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: backgroundColor,
+                      child: const Center(
+       
+                        child: Icon(
+                          Icons.image_not_supported,
+                          color: Colors.white54,
+                          size: 64,
+                        ),
+                      ),
+                    );
+                  },
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      color: backgroundColor,
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                              : null,
+                          color: Colors.white,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.3),
-                      Colors.black.withValues(alpha: 0.7),
-                    ],
+                // Gradient overlay
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.3),
+                        Colors.black.withValues(alpha: 0.7),
+                      ],
+                    ),
                   ),
                 ),
-                child: SafeArea(
+                // Content overlay
+                const SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.all(40.0),
+                    padding: EdgeInsets.all(40.0),
                     child: Align(
                       alignment: Alignment.topLeft, // Top left
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start, // Left align text
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text(
+                          Text(
                             'SPORTIFY',
                             style: TextStyle(
                               fontSize: 48,
@@ -211,7 +238,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               ],
                             ),
                           ),
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           Text(
                             'Live the game',
                             style: TextStyle(
@@ -226,7 +253,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
           // Right Side - Login Form (30%)

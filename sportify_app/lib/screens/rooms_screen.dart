@@ -77,7 +77,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(0),
-                    borderSide: BorderSide(color: AppTheme.primary, width: 2),
+                    borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                   ),
                 ),
                 textAlign: TextAlign.center,
@@ -402,7 +402,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(0), // Sharp corners
-                      borderSide: BorderSide(color: AppTheme.primary, width: 2),
+                      borderSide: const BorderSide(color: AppTheme.primary, width: 2),
                     ),
                   ),
                 ),
@@ -449,7 +449,7 @@ class _RoomsScreenState extends State<RoomsScreen> {
         // Rooms grid/list
         _searchQuery.isEmpty
             ? StreamBuilder<List<Room>>(
-                stream: firestoreService.getPublicRoomsStream(),
+                stream: firestoreService.getAllRoomsStream(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const SizedBox(
@@ -486,6 +486,8 @@ class _RoomsScreenState extends State<RoomsScreen> {
                   }
 
                   var rooms = snapshot.data!;
+                  
+                  // Show all rooms (public, private, and rival) to everyone
                   
                   // Filter by team if specified
                   if (widget.filterByTeam != null) {
@@ -575,6 +577,8 @@ class _RoomsScreenState extends State<RoomsScreen> {
                   }
 
                   var rooms = snapshot.data!;
+                  
+                  // Show all rooms (public, private, and rival) to everyone
                   
                   // Filter by team if specified
                   if (widget.filterByTeam != null) {

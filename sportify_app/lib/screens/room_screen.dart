@@ -362,7 +362,7 @@ class _RoomScreenState extends State<RoomScreen> {
                   width: 350, // Match chat width
                   height: 400,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
+                    gradient: const LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
@@ -1163,7 +1163,7 @@ class _RoomScreenState extends State<RoomScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
+                      gradient: const LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [
@@ -1199,7 +1199,7 @@ class _RoomScreenState extends State<RoomScreen> {
                                     const SizedBox(height: 8),
                                     Text(
                                       _videoContent!.description,
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         color: AppTheme.textFaint,
                                         fontSize: 14,
                                       ),
@@ -1231,13 +1231,13 @@ class _RoomScreenState extends State<RoomScreen> {
                                           const SizedBox(width: 4),
                                           Text(
                                             '(${_currentRoom.totalRatings} ${_currentRoom.totalRatings == 1 ? 'rating' : 'ratings'})',
-                                            style: TextStyle(
+                                            style: const TextStyle(
                                               color: AppTheme.textFaint,
                                               fontSize: 12,
                                             ),
                                           ),
                                         ] else ...[
-                                          Text(
+                                          const Text(
                                             'No ratings yet',
                                             style: TextStyle(
                                               color: AppTheme.textFaint,
@@ -1251,7 +1251,7 @@ class _RoomScreenState extends State<RoomScreen> {
                                     // Star rating input
                                     Row(
                                       children: [
-                                        Text(
+                                        const Text(
                                           'Rate this room: ',
                                           style: TextStyle(
                                             color: AppTheme.textFaint,
@@ -1304,7 +1304,7 @@ class _RoomScreenState extends State<RoomScreen> {
           Container(
             width: 350,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
+              gradient: const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
@@ -1347,32 +1347,6 @@ class _RoomScreenState extends State<RoomScreen> {
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
-                      ),
-                      const Spacer(),
-                      StreamBuilder<List<String>>(
-                        stream: Stream.value(_currentRoom.participants),
-                        builder: (context, snapshot) {
-                          final count = snapshot.data?.length ?? _currentRoom.participants.length;
-                          return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primary.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: AppTheme.primary.withValues(alpha: 0.3),
-                                width: 1,
-                              ),
-                            ),
-                            child: Text(
-                              '$count 👤',
-                              style: const TextStyle(
-                                color: AppTheme.textMain,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          );
-                        },
                       ),
                     ],
                   ),
